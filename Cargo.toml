@@ -1,0 +1,25 @@
+[package]
+name = "examen-tools"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.84.0"
+description = "A set of tools to ease testing across different languages and frameworks using neovim."
+repository = "https://github.com/Ydot19/examen-tools"
+license = "MIT"
+keywords = ["neovim", "plugin", "development-tools", "testing"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+mlua = { version = "0.10.2", features = {"luajit", "module", "vendored"}}
+
+thiserror = {version = "2.0.10"}
+
+# regex
+regex = {version = "1.0.0"}
+
+# serde
+serde = { version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+
