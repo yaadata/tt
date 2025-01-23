@@ -12,7 +12,7 @@ keywords = ["neovim", "plugin", "development-tools", "testing"]
 crate-type = ["cdylib"]
 
 [dependencies]
-mlua = { version = "0.10.2", features = {"luajit", "module", "vendored"}}
+mlua = { version = "0.10.2", features = ["luajit", "module", "vendored"]}
 
 thiserror = {version = "2.0.10"}
 
