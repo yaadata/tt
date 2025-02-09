@@ -1,5 +1,3 @@
-use std::usize;
-
 use tree_sitter::Point;
 
 use super::{enums, metadata::DetectedTestMeta};
@@ -21,13 +19,12 @@ pub struct CursorPosition {
     pub row: usize,
     pub col: usize,
 }
+pub(crate) const fn cursor_position(row: usize, col: usize) -> CursorPosition {
+    CursorPosition { row, col }
+}
 
 impl CursorPosition {
-    pub(crate) const fn new(row: usize, col: usize) -> Self {
-        Self { row, col }
-    }
-
-    pub(crate) fn as_ts_point(&self) -> Point {
+    pub(crate) fn to_point(&self) -> Point {
         Point::new(self.row, self.col)
     }
 }
