@@ -49,5 +49,6 @@ mod test {
         let res = gotest::detect_test_with_query(Some(walker.node()), content);
         // assert
         assert!(res.is_some());
+        assert_eq!(res.unwrap().name, "TestSampleAdd");
     }
 }

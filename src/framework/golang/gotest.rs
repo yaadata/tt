@@ -153,8 +153,8 @@ pub(crate) fn detect_test_with_query(node: Option<Node>, content: String) -> Opt
     match node {
         Some(node) => {
             let current_node_position = node.start_position();
-            let source_file_position =
-                crate_treesitter_node::nearest_source_file_position(Some(node))?;
+            // let source_file_position =
+            //     crate_treesitter_node::nearest_source_file_position(Some(node))?;
 
             let mut cursor = QueryCursor::new();
             let query_pattern = r#"
@@ -175,15 +175,18 @@ pub(crate) fn detect_test_with_query(node: Option<Node>, content: String) -> Opt
                 for node_matched in matches {
                     for m in node_matched.captures {
                         let matched_node_position = m.node.start_position();
-                        if matched_node_position.row >= current_node_position.row
-                            && matched_node_position.row < source_file_position.row
+                        let matched_node_end_position = m.node.end_position();
+                        if matched_node_position.row <= current_node_position.row
+                            && matched_node_end_position.row >= current_node_position.row
                         {
-                            let name = crate_treesitter_node::node_text(m.node, &content);
-                            return Some(TestMethod {
-                                name,
-                                filepath: "".to_string(),
-                                meta: DetectedTestMeta::default_golang(),
-                            });
+                            if let Some(named_child) = m.node.named_child(0) {
+                                let name = crate_treesitter_node::node_text(named_child, &content);
+                                return Some(TestMethod {
+                                    name,
+                                    filepath: "".to_string(),
+                                    meta: DetectedTestMeta::default_golang(),
+                                });
+                            }
                         }
                     }
                 }
