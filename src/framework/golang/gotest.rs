@@ -1,10 +1,3 @@
-use tree_sitter::Language;
-use tree_sitter::Node;
-use tree_sitter::Parser;
-use tree_sitter::Point;
-use tree_sitter::Query;
-use tree_sitter::QueryCursor;
-
 use crate::core::errors::FrameworkError;
 use crate::core::metadata::DetectedTestMeta;
 use crate::core::types::Target;
@@ -13,6 +6,14 @@ use crate::core::{
     enums::{Langauge, ToolCategory},
     traits::{Framework, FrameworkProvider},
 };
+use crate::treesitter::node as crate_treesitter_node;
+use tree_sitter::Language;
+use tree_sitter::Node;
+use tree_sitter::Parser;
+use tree_sitter::Query;
+use tree_sitter::QueryCursor;
+
+use super::common;
 
 pub struct GotestProvider;
 
@@ -56,26 +57,26 @@ impl Framework for GotestProvider {
     }
 
     fn find_test_methods(&self, target: &Target) -> Result<Vec<TestMethod>, FrameworkError> {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&tree_sitter_go::LANGUAGE.into())
-            .expect("Error loading Go parser");
-        if let Some(tree) = parser.parse(target.buffer.content, None) {
-            let mut walker = tree.walk();
-            walker.goto_first_child_for_point(target.buffer.position.to_point());
-            let method = detect_test(
-                Some(walker.node()),
-                target.buffer.content.to_string().clone(),
-            );
-            if method.is_some() {
-                return Ok(vec![method.unwrap()]);
-            }
+        let tree = common::utils::parse_tree(target.buffer.content);
+        match tree {
+            Ok(tree) => {
+                let method = detect_test(
+                    crate_treesitter_node::position_to_nearest_point(
+                        &tree,
+                        target.buffer.position.clone(),
+                    ),
+                    target.buffer.content.to_string().clone(),
+                );
+                if method.is_some() {
+                    return Ok(vec![method.unwrap()]);
+                }
 
-            return Err(FrameworkError::NotFoundError(
-                "no test found at the current position".to_string(),
-            ));
+                Err(FrameworkError::NotFoundError(
+                    "no test found at the current position".to_string(),
+                ))
+            }
+            Err(e) => Err(e),
         }
-        Err(FrameworkError::UnknownError("unknown".to_string()))
     }
 }
 
@@ -141,18 +142,19 @@ fn iterate_children_for_function_name(node: Node, content: String) -> Option<Str
     let children = node.named_children(&mut qursor);
     for child in children {
         if child.is_named() && child.is_named() && child.grammar_name().eq(r#"identifier"#) {
-            return Some(content.as_str()[child.start_byte()..child.end_byte()].to_string());
+            return Some(crate_treesitter_node::node_text(child, &content));
         }
     }
 
     None
 }
 
-fn detect_test_with_query(node: Option<Node>, content: String) -> Option<TestMethod> {
+pub(crate) fn detect_test_with_query(node: Option<Node>, content: String) -> Option<TestMethod> {
     match node {
         Some(node) => {
             let current_node_position = node.start_position();
-            let source_file_position = position_of_source_file(Some(node))?;
+            let source_file_position =
+                crate_treesitter_node::nearest_source_file_position(Some(node))?;
 
             let mut cursor = QueryCursor::new();
             let query_pattern = r#"
@@ -176,7 +178,7 @@ fn detect_test_with_query(node: Option<Node>, content: String) -> Option<TestMet
                         if matched_node_position.row >= current_node_position.row
                             && matched_node_position.row < source_file_position.row
                         {
-                            let name = node_text(m.node, &content);
+                            let name = crate_treesitter_node::node_text(m.node, &content);
                             return Some(TestMethod {
                                 name,
                                 filepath: "".to_string(),
@@ -191,20 +193,4 @@ fn detect_test_with_query(node: Option<Node>, content: String) -> Option<TestMet
         }
         None => None,
     }
-}
-
-fn position_of_source_file(node: Option<Node>) -> Option<Point> {
-    match node {
-        Some(node) => {
-            if node.grammar_name().to_string().eq("source_file") {
-                return Some(node.start_position());
-            }
-            position_of_source_file(node.parent())
-        }
-        _ => None,
-    }
-}
-
-fn node_text(node: tree_sitter::Node, src: &str) -> String {
-    return src[node.start_byte()..node.end_byte()].to_string();
 }

@@ -14,7 +14,7 @@ pub struct Buffer<'a> {
     pub position: CursorPosition,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CursorPosition {
     pub row: usize,
     pub col: usize,
