@@ -61,6 +61,7 @@ pub(crate) mod utils {
             .map(|c| c.to_string())
             .filter(|s| s.ne("//+build"))
             .filter(|s| !s.starts_with('!'))
+            .map(|s| s.replace(",", " "))
             .collect();
 
         Some(res)
@@ -68,50 +69,70 @@ pub(crate) mod utils {
 
     pub(crate) fn modern_build_tags(tags: &str) -> Option<Vec<String>> {
         let expr = tags.split_once("//go:build ");
-        let expr = expr?;
+        let expr = expr?
+            .1
+            .replace("(", " ( ")
+            .replace(")", " ) ")
+            .replace("&&", " && ")
+            .replace("||", " || ")
+            .replace("!", " ! ");
         let mut tags: Vec<String> = vec![];
         let mut curr = String::new();
         let mut parenthesis = vec![];
-        for c in expr.1.split(char::is_whitespace) {
-            match c.starts_with('(') {
-                true => {
+        let mut negation = false;
+        for c in expr.split_whitespace() {
+            match c {
+                "!" => {
+                    negation = true;
+                }
+                "(" => {
                     parenthesis.push('(');
-                    let c = c.trim_start_matches('(');
-                    if !c.is_empty() {
+                }
+                ")" => {
+                    parenthesis.pop();
+                    if parenthesis.is_empty() {
+                        if negation {
+                            negation = false;
+                        } else {
+                            tags.extend(
+                                curr.split(',')
+                                    .filter(|s| !s.is_empty())
+                                    .map(|s| s.to_string()),
+                            );
+                        }
+                        curr.clear();
+                    }
+                }
+                "&&" => {
+                    if curr.is_empty() {
+                        let popped = tags.pop().unwrap();
+                        curr.push_str(&popped);
+                        curr.push(' ');
+                    } else {
+                        curr.push(' ');
+                    }
+                }
+                "||" => {
+                    if !curr.is_empty() {
+                        curr.push(',');
+                    }
+                }
+                _ => {
+                    if negation {
+                        negation = false
+                    } else {
                         curr.push_str(c);
                     }
                 }
-                _ => match c.ends_with(')') {
-                    true => {
-                        parenthesis.pop();
-                        let c = c.trim_end_matches(')');
-                        if !c.is_empty() {
-                            curr.push_str(c);
-                        }
-                        if parenthesis.is_empty() {
-                            tags.push(curr.clone());
-                            curr.clear();
-                        }
-                    }
-                    _ => match c {
-                        "&&" => {
-                            curr.push(',');
-                            curr.push_str(c);
-                        }
-                        "||" => {
-                            tags.push(curr.clone());
-                            curr.clear();
-                        }
-                        _ => {
-                            curr.push_str(c);
-                        }
-                    },
-                },
             }
         }
 
         if !curr.is_empty() {
-            tags.push(curr);
+            tags.extend(
+                curr.split(',')
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string()),
+            );
         }
         Some(tags)
     }
