@@ -20,9 +20,7 @@ pub(crate) mod utils {
     }
 
     pub(crate) fn build_tags(root: Option<Node>, content: &str) -> Option<Vec<String>> {
-        if root.is_none() {
-            return None;
-        }
+        root?;
         let node = root.unwrap();
         let query_pattern = r#"
             [[((source_file 
@@ -55,7 +53,7 @@ pub(crate) mod utils {
         None
     }
 
-    pub(crate) fn legacy_build_tags(tags: &str) -> Option<Vec<String>> {
+    fn legacy_build_tags(tags: &str) -> Option<Vec<String>> {
         let res = tags
             .split(char::is_whitespace)
             .map(|c| c.to_string())
@@ -67,7 +65,7 @@ pub(crate) mod utils {
         Some(res)
     }
 
-    pub(crate) fn modern_build_tags(tags: &str) -> Option<Vec<String>> {
+    fn modern_build_tags(tags: &str) -> Option<Vec<String>> {
         let expr = tags.split_once("//go:build ");
         let expr = expr?
             .1

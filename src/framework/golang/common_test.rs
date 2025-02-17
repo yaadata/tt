@@ -8,52 +8,58 @@ mod test {
     };
     use rstest::rstest;
 
-    use crate::framework::golang::common::utils::{legacy_build_tags, modern_build_tags};
+    use crate::framework::golang::common::utils::{build_tags, parse_tree};
+
+    const sample_for_build_tag_tests: &str = r#"
+    {replace}
+    package golang
+    import (
+      "testing"
+
+      "github.com/stretchr/testify/assert"
+    )
+
+    func sample_add(a, b int) int {
+      return a + b
+    }
+    "#;
 
     #[gtest]
     #[rstest]
-    #[case("//+build unix", "unix")]
-    #[case("//+build unix,postgres", "unix postgres")]
-    fn legacy_build_tags_single_result(#[case] tag: &str, #[case] expected: &str) {
+    #[case("//+build unix", 1, "unix")]
+    #[case("//+build unix,postgres", 1, "unix postgres")]
+    #[case("//+build unix postgres", 2, "unix,postgres")]
+    #[case("//+build unix postgres !py03", 2, "unix,postgres")]
+    fn legacy_build_tags_or_ampersand(
+        #[case] tag: &str,
+        #[case] size: usize,
+        #[case] expected: &str,
+    ) {
+        let content = sample_for_build_tag_tests.replace("{replace}", tag);
+        let tree = parse_tree(content.clone().as_str());
+        assert_that!(tree, ok(anything()));
+        let tree = tree.unwrap();
+        let root = tree.root_node();
         // act
-        let res = legacy_build_tags(tag);
+        let res = build_tags(Some(root), content.as_str());
         // assert
         expect_that!(res, some(anything()));
         let res = res.unwrap();
-        expect_that!(res.len(), eq(1));
-        assert_that!(res.first().unwrap(), eq(expected))
-    }
-
-    #[test]
-    fn legacy_multiple_build_tags() {
-        // arrange
-        let tags = "//+build unix unit py03";
-        // act
-        let res = legacy_build_tags(tags);
-        // assert
-        assert!(res.is_some());
-        let res = res.unwrap();
-        assert_eq!(3, res.len());
-    }
-
-    #[test]
-    fn legacy_multiple_build_tags_single_negation() {
-        // arrange
-        let tags = "//+build unix,unit !py03";
-        // act
-        let res = legacy_build_tags(tags);
-        // assert
-        assert!(res.is_some());
-        let res = res.unwrap();
-        assert_eq!(1, res.len());
+        expect_that!(res.len(), eq(size));
+        assert_that!(res.join(","), eq(expected))
     }
 
     #[test]
     fn legacy_single_build_tag_with_negation() {
         // arrange
-        let tags = "//+build !unix";
+        let tag = "//+build !unix";
+        let content = sample_for_build_tag_tests.replace("{replace}", tag);
+        let tree = parse_tree(content.clone().as_str());
+        assert_that!(tree, ok(anything()));
+        let tree = tree.unwrap();
+        let root = tree.root_node();
         // act
-        let res = legacy_build_tags(tags);
+        let res = build_tags(Some(root), content.as_str());
         // assert
         assert!(res.is_some());
         let res = res.unwrap();
@@ -62,31 +68,28 @@ mod test {
 
     #[gtest]
     #[rstest]
-    #[case("//go:build unix", "unix")]
-    #[case("//go:build unix && postgres", "unix postgres")]
-    #[case("//go:build (unix && postgres)", "unix postgres")]
-    #[case("//go:build ( unix && postgres )", "unix postgres")]
-    fn modern_build_tags_ampersand(#[case] tag: &str, #[case] expected: &str) {
-        // act
-        let res = modern_build_tags(tag);
-        // assert
-        expect_that!(res, some(anything()));
-        let res = res.unwrap();
-        expect_that!(res.len(), eq(1));
-        assert_that!(res.first().unwrap(), eq(expected))
-    }
-
-    #[gtest]
-    #[rstest]
+    #[case("//go:build unix", 1, "unix")]
+    #[case("//go:build unix && postgres", 1, "unix postgres")]
+    #[case("//go:build (unix && postgres)", 1, "unix postgres")]
+    #[case("//go:build ( unix && postgres )", 1, "unix postgres")]
     #[case("//go:build unix || postgres", 2, "unix,postgres")]
     #[case("//go:build ( unix || postgres )", 2, "unix,postgres")]
     #[case("//go:build unix || !postgres", 1, "unix")]
     #[case("//go:build ( unix || !postgres )", 1, "unix")]
     #[case("//go:build ( unix || !postgres ) && mysql", 1, "unix mysql")]
     #[case("//go:build ( unix || !postgres ) || mysql", 2, "unix,mysql")]
-    fn modern_build_tags_or(#[case] tag: &str, #[case] size: usize, #[case] expected: &str) {
+    fn modern_build_tags_or_ampersand(
+        #[case] tag: &str,
+        #[case] size: usize,
+        #[case] expected: &str,
+    ) {
+        let content = sample_for_build_tag_tests.replace("{replace}", tag);
+        let tree = parse_tree(content.clone().as_str());
+        assert_that!(tree, ok(anything()));
+        let tree = tree.unwrap();
+        let root = tree.root_node();
         // act
-        let res = modern_build_tags(tag);
+        let res = build_tags(Some(root), content.as_str());
         // assert
         expect_that!(res, some(anything()));
         let res = res.unwrap();
