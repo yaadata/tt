@@ -1,7 +1,7 @@
 use crate::core::errors::FrameworkError;
-use crate::core::metadata::DetectedTestMeta;
+use crate::core::metadata::RunnableMeta;
+use crate::core::types::Runnable;
 use crate::core::types::Target;
-use crate::core::types::TestMethod;
 use crate::core::{
     enums::{Langauge, ToolCategory},
     traits::{Framework, FrameworkProvider},
@@ -9,11 +9,11 @@ use crate::core::{
 use crate::treesitter::node as crate_treesitter_node;
 use tree_sitter::Language;
 use tree_sitter::Node;
-use tree_sitter::Parser;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
 
 use super::common;
+use super::common::utils::get_build_tags;
 
 pub struct GotestProvider;
 
@@ -52,23 +52,33 @@ impl Framework for GotestProvider {
         target.buffer.filepath.to_string().ends_with(FILE_SUFFIX)
     }
 
-    fn generate_command(&self, content: &str) -> String {
+    fn generate_command(&self, runnable: Runnable) -> String {
         "go test some".to_string()
     }
 
-    fn find_test_methods(&self, target: &Target) -> Result<Vec<TestMethod>, FrameworkError> {
+    fn runnable(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
         let tree = common::utils::parse_tree(target.buffer.content);
         match tree {
             Ok(tree) => {
-                let method = top_level_test_function(
+                let build_tags = get_build_tags(tree.root_node(), target.buffer.content);
+                let runnable = top_level_test_function(
                     crate_treesitter_node::position_to_nearest_point(
                         &tree,
                         target.buffer.position.clone(),
                     ),
-                    target.buffer.content.to_string().clone(),
+                    target,
                 );
-                if method.is_some() {
-                    return Ok(vec![method.unwrap()]);
+                let mut runnables: Vec<Runnable> = vec![];
+                if let Some(runnable) = runnable {
+                    let mut r = runnable;
+                    r.meta.set_position(target.buffer.position.clone());
+                    runnables.push(r.clone());
+                    if let Some(build_tags) = build_tags {
+                        for t in build_tags.into_iter() {
+                            let mut r = r.clone();
+                            r.meta.set_build_tags(t);
+                        }
+                    }
                 }
 
                 Err(FrameworkError::NotFoundError(
@@ -80,20 +90,7 @@ impl Framework for GotestProvider {
     }
 }
 
-fn get_parent(node: Option<Node>) -> Option<Node> {
-    match node {
-        Some(node) => {
-            if node.is_extra() {
-                return get_parent(Some(node));
-            }
-
-            Some(node)
-        }
-        _ => None,
-    }
-}
-
-pub(crate) fn top_level_test_function(node: Option<Node>, content: String) -> Option<TestMethod> {
+pub(crate) fn top_level_test_function(node: Option<Node>, target: &Target) -> Option<Runnable> {
     match node {
         Some(node) => {
             let current_node_position = node.start_position();
@@ -110,6 +107,7 @@ pub(crate) fn top_level_test_function(node: Option<Node>, content: String) -> Op
                      ) @testfunc
                   (#contains? @test_name "Test"))]]
             "#;
+            let content = target.buffer.content;
             let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern);
             if let Result::Ok(q) = query {
                 let capture_index = q
@@ -127,10 +125,10 @@ pub(crate) fn top_level_test_function(node: Option<Node>, content: String) -> Op
                             && m.node.end_position().row >= current_node_position.row
                         {
                             let name = crate_treesitter_node::node_text(m.node, &content);
-                            return Some(TestMethod {
+                            return Some(Runnable {
                                 name,
                                 filepath: "".to_string(),
-                                meta: DetectedTestMeta::default_golang(),
+                                meta: RunnableMeta::default_golang(),
                             });
                         }
                     }

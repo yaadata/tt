@@ -28,3 +28,16 @@ pub(crate) fn position_to_nearest_point(tree: &Tree, position: CursorPosition) -
 
     None
 }
+
+pub(crate) fn get_parent(node: Option<Node>) -> Option<Node> {
+    match node {
+        Some(node) => {
+            if node.is_extra() {
+                return get_parent(Some(node));
+            }
+
+            Some(node)
+        }
+        _ => None,
+    }
+}

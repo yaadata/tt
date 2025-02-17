@@ -1,6 +1,7 @@
 use super::types::{cursor_position, CursorPosition};
 
-pub(crate) enum DetectedTestMeta {
+#[derive(Clone)]
+pub(crate) enum RunnableMeta {
     Golang {
         package: String,
         build_tags: Vec<String>,
@@ -8,9 +9,9 @@ pub(crate) enum DetectedTestMeta {
     },
 }
 
-impl DetectedTestMeta {
+impl RunnableMeta {
     pub(crate) fn default_golang() -> Self {
-        DetectedTestMeta::Golang {
+        RunnableMeta::Golang {
             package: String::new(),
             build_tags: Vec::new(),
             point: cursor_position(0, 0),

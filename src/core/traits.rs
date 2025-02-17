@@ -1,13 +1,13 @@
 use super::{
     enums::{Langauge, ToolCategory},
     errors::FrameworkError,
-    types::{Target, TestMethod},
+    types::{Runnable, Target},
 };
 
 pub trait Framework {
     fn detect(&self, target: &Target) -> bool;
-    fn find_test_methods(&self, target: &Target) -> Result<Vec<TestMethod>, FrameworkError>;
-    fn generate_command(&self, content: &str) -> String;
+    fn runnable(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError>;
+    fn generate_command(&self, runnable: Runnable) -> String;
 }
 
 pub trait FrameworkProvider {

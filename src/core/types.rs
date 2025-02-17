@@ -1,17 +1,28 @@
 use tree_sitter::Point;
 
-use super::{enums, metadata::DetectedTestMeta};
+use super::{enums, metadata::RunnableMeta};
 
-pub struct TestMethod {
+#[derive(Clone)]
+pub struct Runnable {
     pub name: String,
     pub filepath: String,
-    pub meta: DetectedTestMeta,
+    pub meta: RunnableMeta,
 }
 
 pub struct Buffer<'a> {
     pub content: &'a str,
     pub filepath: String,
     pub position: CursorPosition,
+}
+
+impl Buffer<'_> {
+    pub fn new(content: &str, filepath: String, position: CursorPosition) -> Buffer {
+        Buffer {
+            content,
+            filepath,
+            position,
+        }
+    }
 }
 
 #[derive(Default, Clone)]
@@ -32,4 +43,10 @@ impl CursorPosition {
 pub struct Target<'a> {
     pub category: enums::ToolCategory,
     pub buffer: Buffer<'a>,
+}
+
+impl Target<'_> {
+    pub fn new(category: enums::ToolCategory, buffer: Buffer) -> Target {
+        Target { category, buffer }
+    }
 }

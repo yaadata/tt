@@ -19,9 +19,7 @@ pub(crate) mod utils {
         Ok(tree.unwrap())
     }
 
-    pub(crate) fn build_tags(root: Option<Node>, content: &str) -> Option<Vec<String>> {
-        root?;
-        let node = root.unwrap();
+    pub(crate) fn get_build_tags(root: Node, content: &str) -> Option<Vec<String>> {
         let query_pattern = r#"
             [[((source_file 
               (comment) @build_tags
@@ -35,7 +33,7 @@ pub(crate) mod utils {
                 .capture_index_for_name("build_tags")
                 .expect("could not find index position of `build_tags` capture");
             let mut cursor = QueryCursor::new();
-            let query_matches = cursor.matches(&q, node, content.as_bytes());
+            let query_matches = cursor.matches(&q, root, content.as_bytes());
             for node_matched in query_matches {
                 for m in node_matched.captures.iter() {
                     if m.index != capture_index {

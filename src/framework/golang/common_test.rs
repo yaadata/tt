@@ -8,7 +8,7 @@ mod test {
     };
     use rstest::rstest;
 
-    use crate::framework::golang::common::utils::{build_tags, parse_tree};
+    use crate::framework::golang::common::utils::{get_build_tags, parse_tree};
 
     const sample_for_build_tag_tests: &str = r#"
     {replace}
@@ -41,7 +41,7 @@ mod test {
         let tree = tree.unwrap();
         let root = tree.root_node();
         // act
-        let res = build_tags(Some(root), content.as_str());
+        let res = get_build_tags(root, content.as_str());
         // assert
         expect_that!(res, some(anything()));
         let res = res.unwrap();
@@ -59,7 +59,7 @@ mod test {
         let tree = tree.unwrap();
         let root = tree.root_node();
         // act
-        let res = build_tags(Some(root), content.as_str());
+        let res = get_build_tags(root, content.as_str());
         // assert
         assert!(res.is_some());
         let res = res.unwrap();
@@ -89,7 +89,7 @@ mod test {
         let tree = tree.unwrap();
         let root = tree.root_node();
         // act
-        let res = build_tags(Some(root), content.as_str());
+        let res = get_build_tags(root, content.as_str());
         // assert
         expect_that!(res, some(anything()));
         let res = res.unwrap();
