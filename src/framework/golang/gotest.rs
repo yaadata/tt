@@ -60,7 +60,7 @@ impl Framework for GotestProvider {
         let tree = common::utils::parse_tree(target.buffer.content);
         match tree {
             Ok(tree) => {
-                let method = detect_test(
+                let method = top_level_test_function(
                     crate_treesitter_node::position_to_nearest_point(
                         &tree,
                         target.buffer.position.clone(),
@@ -80,50 +80,6 @@ impl Framework for GotestProvider {
     }
 }
 
-fn detect_test(node: Option<Node>, content: String) -> Option<TestMethod> {
-    match node {
-        Some(current_node) => {
-            if current_node.is_named()
-                && current_node
-                    .grammar_name()
-                    .to_string()
-                    .eq("function_declaration")
-            {
-                if current_node.grammar_name().to_string().eq("source_file") {
-                    return None;
-                }
-
-                if let Some(name) =
-                    iterate_children_for_function_name(current_node, content.clone())
-                {
-                    return Some(TestMethod {
-                        name,
-                        filepath: "".to_string(),
-                        meta: DetectedTestMeta::default_golang(),
-                    });
-                }
-            }
-
-            if let Some(parent) = get_parent(Some(current_node)) {
-                if parent.is_named() && parent.grammar_name().to_string().eq("function_declaration")
-                {
-                    if let Some(name) = iterate_children_for_function_name(parent, content.clone())
-                    {
-                        return Some(TestMethod {
-                            name,
-                            filepath: "".to_string(),
-                            meta: DetectedTestMeta::default_golang(),
-                        });
-                    }
-                }
-            }
-
-            detect_test(current_node.parent(), content)
-        }
-        None => None,
-    }
-}
-
 fn get_parent(node: Option<Node>) -> Option<Node> {
     match node {
         Some(node) => {
@@ -137,28 +93,13 @@ fn get_parent(node: Option<Node>) -> Option<Node> {
     }
 }
 
-fn iterate_children_for_function_name(node: Node, content: String) -> Option<String> {
-    let mut qursor = node.clone().walk();
-    let children = node.named_children(&mut qursor);
-    for child in children {
-        if child.is_named() && child.is_named() && child.grammar_name().eq(r#"identifier"#) {
-            return Some(crate_treesitter_node::node_text(child, &content));
-        }
-    }
-
-    None
-}
-
-pub(crate) fn detect_test_with_query(node: Option<Node>, content: String) -> Option<TestMethod> {
+pub(crate) fn top_level_test_function(node: Option<Node>, content: String) -> Option<TestMethod> {
     match node {
         Some(node) => {
             let current_node_position = node.start_position();
-            // let source_file_position =
-            //     crate_treesitter_node::nearest_source_file_position(Some(node))?;
-
-            let mut cursor = QueryCursor::new();
             let query_pattern = r#"
-            [[((function_declaration name: (identifier) @test_name
+            [[((function_declaration 
+                    name: (identifier) @test_name
                     parameters: (parameter_list
                         (parameter_declaration
                                  name: (identifier)
@@ -171,22 +112,26 @@ pub(crate) fn detect_test_with_query(node: Option<Node>, content: String) -> Opt
             "#;
             let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern);
             if let Result::Ok(q) = query {
-                let matches = cursor.matches(&q, node, content.as_bytes());
-                for node_matched in matches {
-                    for m in node_matched.captures {
-                        let matched_node_position = m.node.start_position();
-                        let matched_node_end_position = m.node.end_position();
-                        if matched_node_position.row <= current_node_position.row
-                            && matched_node_end_position.row >= current_node_position.row
+                let capture_index = q
+                    .capture_index_for_name("test_name")
+                    .expect("could not find index position of `test_name` capture");
+                let mut cursor = QueryCursor::new();
+                let query_matches = cursor.matches(&q, node, content.as_bytes());
+                for node_matched in query_matches {
+                    for m in node_matched
+                        .captures
+                        .iter()
+                        .filter(|c| c.index == capture_index)
+                    {
+                        if m.node.start_position().row <= current_node_position.row
+                            && m.node.end_position().row >= current_node_position.row
                         {
-                            if let Some(named_child) = m.node.named_child(0) {
-                                let name = crate_treesitter_node::node_text(named_child, &content);
-                                return Some(TestMethod {
-                                    name,
-                                    filepath: "".to_string(),
-                                    meta: DetectedTestMeta::default_golang(),
-                                });
-                            }
+                            let name = crate_treesitter_node::node_text(m.node, &content);
+                            return Some(TestMethod {
+                                name,
+                                filepath: "".to_string(),
+                                meta: DetectedTestMeta::default_golang(),
+                            });
                         }
                     }
                 }

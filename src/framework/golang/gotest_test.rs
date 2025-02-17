@@ -24,7 +24,7 @@ mod test {
         walker.goto_first_child_for_point(cursor.to_point());
 
         // act
-        let res = gotest::detect_test_with_query(Some(walker.node()), content);
+        let res = gotest::top_level_test_function(Some(walker.node()), content);
         // assert
         assert!(res.is_none());
     }
@@ -46,7 +46,7 @@ mod test {
         walker.goto_first_child_for_point(cursor.to_point());
 
         // act
-        let res = gotest::detect_test_with_query(Some(walker.node()), content);
+        let res = gotest::top_level_test_function(Some(walker.node()), content);
         // assert
         assert!(res.is_some());
         assert_eq!(res.unwrap().name, "TestSampleAdd");
