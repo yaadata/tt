@@ -10,3 +10,12 @@ pub enum ToolCategory {
     Debugger,
     TestRunner,
 }
+
+#[derive(PartialEq, Eq)]
+pub enum Search {
+    Nearest,
+    InMethod,
+    InFile,
+    InDirectory,
+    InProject,
+}

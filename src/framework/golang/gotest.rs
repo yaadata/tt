@@ -133,19 +133,126 @@ pub(crate) fn top_level_test_function(node: Option<Node>, target: &Target) -> Op
     None
 }
 
-mod golang_table_test {
+pub(in crate::framework::golang) mod golang_subtests {
     use tree_sitter::{Language, Node, Query, QueryCursor};
 
-    use crate::core::types::{Runnable, Target};
+    use crate::core::types::{CursorPosition, Runnable, Target};
 
-    pub(crate) fn get_sub_test_function(
+    pub(in crate::framework::golang) fn get_sub_test_function(
         node: Option<Node>,
         target: &Target,
     ) -> Option<Vec<Runnable>> {
-        // match node {
-        //     Some(node) => {}
-        // }
-        todo!()
+        match node {
+            Some(node) => {
+                let mut cursor_position = None;
+                if target
+                    .search_strategy
+                    .eq(&crate::core::enums::Search::Nearest)
+                {
+                    cursor_position = Some(target.buffer.position);
+                }
+                get_string_literal_subtests(node, target.buffer.content, cursor_position)
+            }
+            _ => None,
+        }
+    }
+
+    fn get_string_literal_subtests(
+        node: Node,
+        content: &str,
+        cursor_position: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
+        const QUERY_PATTERN: &str = r#"
+            [[
+                ;; top level test function
+                ((function_declaration 
+                  name: (identifier) @_test.parent.name
+                  parameters: (parameter_list
+                          (parameter_declaration
+                            name: (identifier) @_test.parent.var
+                                        type: (pointer_type
+                                (qualified_type
+                                  package: (package_identifier) @_test.param_package
+                                  name: (type_identifier) @_test.param_name))))
+                          ) @testfunc
+                (#contains? @_test.parent.name "Test"))
+              ;; string literal sub test
+              (((expression_statement
+                  (call_expression
+                      function: (selector_expression
+                          operand: (identifier) @testing (#eq? @_test.parent.var @testing)
+                            field: (field_identifier) @testing.method (#eq? @testing.method "Run")
+                        )
+                        arguments: (argument_list
+                          (interpreted_string_literal) @test.case.name.value
+                            (func_literal
+                              parameters: (parameter_list
+                                  (parameter_declaration
+                                      name: (identifier)
+                                        type: (pointer_type
+                                          (qualified_type
+                                            package: (package_identifier) @test.case.package  
+                                              name: (type_identifier) @test.case.package.param 
+                        )	
+                      )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ) @test.case
+              ))
+            ]]
+        "#;
+
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
+        let function_name_capture_index = query.capture_index_for_name("_test.parent.name")?;
+        let subcase_capture_index = query.capture_index_for_name("test.case.name.value")?;
+        let mut cursor = QueryCursor::new();
+        let query_matches = cursor.matches(&query, node, content.as_bytes());
+        let mut runnables = vec![];
+
+        for node_matched in query_matches {
+            let function_name_id = node_matched
+                .captures
+                .iter()
+                .find(|capture| capture.index == function_name_capture_index)
+                .map(|capture| capture.node.id());
+
+            node.child_by_field_id(function_name_id?);
+
+            let captured_subtest = node_matched
+                .captures
+                .iter()
+                .find(|capture| capture.index == subcase_capture_index);
+
+            if let Some(current) = cursor_position {
+                if let Some(capture) = captured_subtest {
+                    let range = capture.node.range();
+                    if !current.in_range(range.start_point, range.end_point) {
+                        continue;
+                    }
+                }
+            }
+
+            let subtest = captured_subtest.map(|capture| &content[capture.node.byte_range()]);
+            if let Some(function_name) = function_name {
+                if let Some(casename) = subtest {
+                    let runnable = Runnable {
+                        name: function_name.to_string() + "/" + casename,
+                        filepath: "".to_string(),
+                        meta: crate::core::metadata::RunnableMeta::default_golang(),
+                    };
+                    runnables.push(runnable);
+                }
+            }
+        }
+
+        if runnables.is_empty() {
+            None
+        } else {
+            Some(runnables)
+        }
     }
 
     // get_in_loop_with_named_subtest
@@ -176,7 +283,11 @@ mod golang_table_test {
     // 		})
     // 	}
     // }
-    fn get_in_loop_with_named_subtest(node: Node, content: &str) -> Option<Vec<Runnable>> {
+    fn get_in_loop_with_named_subtest(
+        node: Node,
+        content: &str,
+        cursor: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
         [[
           ;; query for function name
@@ -306,7 +417,11 @@ mod golang_table_test {
     // 		})
     // 	}
     // }
-    fn get_in_loop_with_unnamed_subtests(node: Node, content: &str) -> Option<Vec<Runnable>> {
+    fn get_in_loop_with_unnamed_subtests(
+        node: Node,
+        content: &str,
+        cursor: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
             [[
               ;; query for function name

@@ -25,7 +25,7 @@ impl Buffer<'_> {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct CursorPosition {
     pub row: usize,
     pub col: usize,
@@ -38,15 +38,29 @@ impl CursorPosition {
     pub(crate) fn to_point(&self) -> Point {
         Point::new(self.row, self.col)
     }
+
+    pub(crate) fn in_range(&self, start: Point, end: Point) -> bool {
+        let cursor = self.to_point();
+        cursor >= start && cursor <= end
+    }
 }
 
 pub struct Target<'a> {
     pub category: enums::ToolCategory,
     pub buffer: Buffer<'a>,
+    pub search_strategy: enums::Search,
 }
 
 impl Target<'_> {
     pub fn new(category: enums::ToolCategory, buffer: Buffer) -> Target {
-        Target { category, buffer }
+        Target {
+            category,
+            buffer,
+            search_strategy: enums::Search::Nearest,
+        }
+    }
+
+    pub fn override_search_strategy(&mut self, search_strategy: enums::Search) {
+        self.search_strategy = search_strategy;
     }
 }
