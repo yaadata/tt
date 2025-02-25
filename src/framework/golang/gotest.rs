@@ -148,7 +148,35 @@ mod golang_table_test {
         todo!()
     }
 
-    fn get_in_loop_subtest(node: Node, content: &str) -> Option<Vec<Runnable>> {
+    // get_in_loop_with_named_subtest
+    // Example:
+    // func TestTableTest(t *testing.T) {
+    // 	for _, tt := range []struct {
+    // 		description string
+    // 		a           int
+    // 		b           int
+    // 		expected    int
+    // 	}{
+    // 		{
+    // 			description: "base case",
+    // 			a:           0,
+    // 			b:           3,
+    // 			expected:    3,
+    // 		},
+    // 		{
+    // 			description: "case 1",
+    // 			a:           1,
+    // 			b:           3,
+    // 			expected:    4,
+    // 		},
+    // 	} {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
+    fn get_in_loop_with_named_subtest(node: Node, content: &str) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
         [[
           ;; query for function name
@@ -168,18 +196,18 @@ mod golang_table_test {
             (range_clause
               left: (expression_list
                 (identifier)
-                (identifier) @test.subcase.variable
+                (identifier) @test.loop.case.variable
               )
               right: (composite_literal
                 type: (slice_type
                   element: (struct_type
                     (field_declaration_list
                       (field_declaration
-                        name: (field_identifier)
-                        type: (type_identifier)
+                      	name: (field_identifier) @test.case.definition.field
+                        type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
                       )
                     )
-                  )
+                  ) @test.case.type
                 )
                 body: (literal_value
                   (literal_element
@@ -187,12 +215,12 @@ mod golang_table_test {
                       (keyed_element
                         (literal_element
                           (identifier)
-                        )  @test.subcase.definition.field
+                        )  @test.case.field.name (#eq? @test.case.field.name @test.case.definition.field)
                         (literal_element
-                          (interpreted_string_literal) @test.subcase.definition.name
+                          (interpreted_string_literal) @test.case.field.value
                         )
                       )
-                    ) @test.subcase.definition
+                    ) @test.case
                   )
                 )
               )
@@ -201,14 +229,14 @@ mod golang_table_test {
               (expression_statement
                 (call_expression
                   function: (selector_expression
-                    operand: (identifier) @_test.var
-                    field: (field_identifier) &_test.method (#eq? @_test.method "Run")
+                    operand: (identifier) @test.loop.test
+                    field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
                   )
                   arguments: (argument_list
                     (selector_expression
-                      operand: (identifier)
-                      field: (field_identifier) @_test.name
-                    ) (#eq? @test.subcase.definition.field @_test.name)
+                      operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
+                      field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
+                    ) 
                   )
                 )
               )
@@ -250,7 +278,35 @@ mod golang_table_test {
         Some(runnables)
     }
 
-    fn get_in_loop_unnamed_subtests(node: Node, content: &str) -> Option<Vec<Runnable>> {
+    // get_in_loop_with_unnamed_subtests
+    // Example:
+    // func TestTableTest(t *testing.T) {
+    // 	for _, tt := range []struct {
+    // 		description string
+    // 		a           int
+    // 		b           int
+    // 		expected    int
+    // 	}{
+    // 		{
+    // 			"base case",
+    // 			0,
+    // 			3,
+    // 			3,
+    // 		},
+    // 		{
+    // 			"case 1",
+    // 			1,
+    // 			3,
+    // 			4,
+    // 		},
+    // 	} {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
+    fn get_in_loop_with_unnamed_subtests(node: Node, content: &str) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
             [[
               ;; query for function name
@@ -270,15 +326,15 @@ mod golang_table_test {
                 (range_clause
                   left: (expression_list
                     (identifier)
-                    (identifier) @test.subcase.variable
+                    (identifier) @test.loop.case.variable
                   )
                   right: (composite_literal
                     type: (slice_type
                       element: (struct_type
                         (field_declaration_list
                           (field_declaration
-                            name: (field_identifier) @test.subcase.definition.field
-                            type: (type_identifier) @field.type (#eq? @field.type "string")
+                            name: (field_identifier) @test.case.definition.field
+                            type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
                           )
                         )
                       )
@@ -287,11 +343,10 @@ mod golang_table_test {
                       (literal_element
                         (literal_value
                           (literal_element
-                            (interpreted_string_literal) @test.subcase.definition.name
+                            (interpreted_string_literal) @test.case.field.value
                           )
-                          (literal_element)
-                        ) @test.subcase.definition
-                      )
+                        ) 
+                      ) @test.case
                     )
                   )
                 )
@@ -299,13 +354,13 @@ mod golang_table_test {
                   (expression_statement
                     (call_expression
                       function: (selector_expression
-                        operand: (identifier) @_test.var
-                        field: (field_identifier) @_test.method (#eq? @_test.method "Run")
+                        operand: (identifier) @test.loop.test
+                        field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
                       )
                       arguments: (argument_list
                         (selector_expression
-                          operand: (identifier) @_test.runner.test_name (#eq? @test.subcase.variable @_test.runner.test_name)
-                          field: (field_identifier) @_test.runner.test_name (#eq? @test.subcase.definition.field @_test.runner.test_name)
+                          operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
+                          field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
                         )
                       )
                     )
@@ -349,7 +404,36 @@ mod golang_table_test {
         Some(runnables)
     }
 
-    fn get_in_loop_unnamed_subcase() -> Option<Vec<Runnable>> {
+    // get_in_loop_typed_testcase_with_unnamed_case_fields
+    // Example:
+    // func TestTableTest(t *testing.T) {
+    // 	type Scenario struct {
+    // 		description string
+    // 		a           int
+    // 		b           int
+    // 		expected    int
+    // 	}
+    // 	for _, tt := range []Scenario{
+    // 		{
+    // 			"base case",
+    // 			0,
+    // 			3,
+    // 			3,
+    // 		},
+    // 		{
+    // 			"case 1",
+    // 			1,
+    // 			3,
+    // 			4,
+    // 		},
+    // 	} {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
+    fn get_in_loop_typed_testcase_with_unnamed_case_fields() -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
             [[
               ;; query for function name
@@ -367,64 +451,95 @@ mod golang_table_test {
               ;; query for list table tests (wrapped in loop)
               (((type_declaration
                   (type_spec
-                      name: (type_identifier) @test.case.type.name
+                      name: (type_identifier) @test.case.variable.name
                         type: (struct_type 
                           (field_declaration_list
-                                      (field_declaration
-                                        name: (field_identifier) @test.subcase.definition.field
-                                        type: (type_identifier) @field.type (#eq? @field.type "string")
-                                      )
-                                    )
-                    )
+                              (field_declaration
+                                name: (field_identifier) @test.case.definition.field
+                                type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
+                          )
+                        )
+                    ) @test.case.type
                   )
-                ) @test.case.declaration
+                ) 
                 (for_statement
-                            (range_clause
-                              left: (expression_list
-                                (identifier)
-                                (identifier) @test.subcase.variable
-                              )
-                              right: (composite_literal
-                                type: (slice_type
-                                element: (type_identifier) @test.case.type
-                                )
-                                body: (literal_value
-                                  (literal_element
-                                    (literal_value
-                                      (literal_element
-                                        (interpreted_string_literal) @test.case.definition.name
-                                      )
-                                      (literal_element)
-                                    ) @test.case.definition
-                                  )
-                                )
+                    (range_clause
+                      left: (expression_list
+                        (identifier)
+                        (identifier) @test.loop.case.variable
+                      )
+                      right: (composite_literal
+                          type: (slice_type
+                          element: (type_identifier) @test.loop.case.variable.type (#eq? @test.loop.case.variable.type @test.case.variable.name)
+                        )
+                        body: (literal_value
+                          (literal_element
+                            (literal_value
+                              (literal_element
+                                (interpreted_string_literal) @test.case.name.value
                               )
                             )
-                            body: (block
-                              (expression_statement
-                                (call_expression
-                                  function: (selector_expression
-                                    operand: (identifier) @_test.var
-                                    field: (field_identifier) @_test.method (#eq? @_test.method "Run")
-                                  )
-                                  arguments: (argument_list
-                                    (selector_expression
-                                      operand: (identifier) @_test.runner.test_name (#eq? @test.subcase.variable @_test.runner.test_name)
-                                      field: (field_identifier) @_test.runner.test_name (#eq? @test.subcase.definition.field @_test.runner.test_name)
-                                    )
-                                  )
-                                )
-                              )
+                          ) @test.case
+                        )
+                      )
+                    )
+                    body: (block
+                      (expression_statement
+                        (call_expression
+                          function: (selector_expression
+                            operand: (identifier) @test.loop.test
+                            field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
+                          )
+                          arguments: (argument_list
+                            (selector_expression
+                                operand: (identifier) @test.loop.test.variable (#eq? @test.loop.case.variable @test.loop.test.variable)
+                                field: (field_identifier) @test.loop.test.variable.field (#eq? @test.case.definition.field @test.loop.test.variable.field)
                             )
                           )
+                        )
+                      )
+                    )
+                  )
               ))
             ]]"#;
         todo!()
     }
 
-    fn get_in_lop_named_subcase() -> Option<Vec<Runnable>> {
+    // get_in_loop_typed_testcase_with_named_case_fields
+    // Defines a loop with a slice created with an outer variable.
+    //
+    // Example:
+    // func TestSample(t *testing.T) {
+    // 	type Scenario struct {
+    //     	description string
+    //         a			int
+    //         b			int
+    //         expected	int
+    //     }
+    //
+    // 	for _, tt := range []Scenario{
+    // 		{
+    // 			description: "base case",
+    // 			a:          0,
+    // 			b:          3,
+    // 			c:          3,
+    // 		},
+    // 		{
+    // 			description: "case 1",
+    // 			a:           1,
+    // 			b:           3,
+    // 			expected:    4,
+    // 		},
+    // 	}  {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
+    fn get_in_loop_typed_testcase_with_named_case_fields() -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
-            [[
+		        [[
               ;; query for function name
               ((function_declaration 
                                 name: (identifier) @_test.parent.name
@@ -440,66 +555,96 @@ mod golang_table_test {
               ;; query for list table tests (wrapped in loop)
               (((type_declaration
                   (type_spec
-                      name: (type_identifier) @test.case.type.name
+                      name: (type_identifier) @test.case.variable.name
                         type: (struct_type 
                           (field_declaration_list
-                                      (field_declaration
-                                        name: (field_identifier) @test.subcase.definition.field
-                                        type: (type_identifier) @field.type (#eq? @field.type "string")
-                                      )
-                                    )
-                    )
-                  )
-                ) @test.case.declaration
+                          		(field_declaration
+                          			name: (field_identifier) @test.case.definition.field
+                          			type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
+                          		)
+                        	) 
+                    	) @test.case.type
+                  	) 
+                )
                 (for_statement
-                            (range_clause
-                              left: (expression_list
-                                (identifier)
-                                (identifier) @test.subcase.variable
-                              )
-                              right: (composite_literal
-                                type: (slice_type
-                                element: (type_identifier) @test.case.type
-                                )
-                                body: (literal_value
-                                  (literal_element
-                                    (literal_value
-                                    (keyed_element
-                                          (literal_element
-                                              (identifier)
-                                          )  @test.subcase.definition.field
-                                          (literal_element
-                                              (interpreted_string_literal) @test.subcase.definition.name
-                                          )
-                                      )
-                                  ) @test.case.definition
-                                  )
-                                )
-                              )
-                            )
-                            body: (block
-                              (expression_statement
-                                (call_expression
-                                  function: (selector_expression
-                                    operand: (identifier) @_test.var
-                                    field: (field_identifier) @_test.method (#eq? @_test.method "Run")
-                                  )
-                                  arguments: (argument_list
-                                    (selector_expression
-                                      operand: (identifier) @_test.runner.test_name (#eq? @test.subcase.variable @_test.runner.test_name)
-                                      field: (field_identifier) @_test.runner.test_name (#eq? @test.subcase.definition.field @_test.runner.test_name)
-                                    )
-                                  )
-                                )
-                              )
-                            )
-                          )
+                	(range_clause
+                		left: (expression_list
+                			(identifier)
+                			(identifier) @test.loop.case.variable
+                	)
+                		right: (composite_literal
+                			type: (slice_type
+                			element: (type_identifier) @test.loop.case.variable.type (#eq? @test.loop.case.variable.type @test.case.variable.name)
+                		)
+                		body: (literal_value
+                				(literal_element
+                					(literal_value
+                						(keyed_element
+                							(literal_element
+                									(identifier)
+                							)  @test.case.name.field
+                							(literal_element
+                								(interpreted_string_literal) @test.case.name.value
+                						)
+                					)
+                				) @test.case
+                			)
+                		)
+                	)
+                )
+                body: (block
+                		(expression_statement
+                			(call_expression
+                				function: (selector_expression
+                					operand: (identifier) @test.loop.test
+                					field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
+                				)
+                				arguments: (argument_list
+                					(selector_expression
+                						operand: (identifier) @test.loop.test.variable (#eq? @test.loop.case.variable @test.loop.test.variable)
+                            field: (field_identifier) @test.loop.test.variable.field (#eq? @test.case.definition.field @test.loop.test.variable.field)
+                					)
+                				)
+                			)
+                		)
+                	)
+                )
               ))
             ]]"#;
         todo!()
     }
 
-    fn get_out_loop_named_subtests() -> Option<Vec<Runnable>> {
+    // get_out_loop_named_tabletests
+    // Example:
+    // func TestTableTest(t *testing.T) {
+    // 	scenarios := []struct {
+    // 		description string
+    // 		a           int
+    // 		b           int
+    // 		expected    int
+    // 	}{
+    // 		{
+    // 			description: 	"base case",
+    // 			a: 				0,
+    // 			b: 				3,
+    // 			expected:		3,
+    // 		},
+    // 		{
+    // 			description: "case 1",
+    // 			a:           1,
+    // 			b:           3,
+    // 			expected:    4,
+    // 		},
+    // 	}
+    //
+    // 	for _, tt := range scenarios {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
+    fn get_out_loop_named_tabletests() -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
         [[
           ;; find function name
@@ -563,7 +708,7 @@ mod golang_table_test {
                       (call_expression
                           function: (selector_expression
                               operand: (identifier) @test.loop.test
-                                field: (field_identifier) @test.loop.test.method
+                                field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
                             )
                             arguments: (argument_list
                               (selector_expression
@@ -580,6 +725,36 @@ mod golang_table_test {
         todo!()
     }
 
+    // get_out_loop_unnamed_subtests
+    // example:
+    // func TestTableTest(t *testing.T) {
+    // 	scenarios := []struct {
+    // 		description string
+    // 		a           string
+    // 		b           int
+    // 		expected    int
+    // 	}{
+    // 		{
+    // 			"base case",
+    // 			0,
+    // 			3,
+    // 			3,
+    // 		},
+    // 		{
+    // 			"case 1",
+    // 			1,
+    // 			3,
+    // 			4,
+    // 		},
+    // 	}
+    //
+    // 	for _, tt := range scenarios {
+    // 		t.Run(tt.description, func(t *testing.T) {
+    // 			actual := sample_add(tt.a, tt.b)
+    // 			assert.Equal(t, tt.expected, actual)
+    // 		})
+    // 	}
+    // }
     fn get_out_loop_unnamed_subtests() -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
           [[
@@ -640,7 +815,7 @@ mod golang_table_test {
                           (call_expression
                               function: (selector_expression
                                   operand: (identifier) @test.loop.test
-                                    field: (field_identifier) @test.loop.test.method
+                                    field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
                                 )
                                 arguments: (argument_list
                                   (selector_expression
