@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use tree_sitter::Point;
 
 use super::{enums, metadata::RunnableMeta};
@@ -6,6 +8,7 @@ use super::{enums, metadata::RunnableMeta};
 pub struct Runnable {
     pub name: String,
     pub filepath: String,
+    pub range: Range<CursorPosition>,
     pub meta: RunnableMeta,
 }
 
@@ -30,18 +33,26 @@ pub struct CursorPosition {
     pub row: usize,
     pub col: usize,
 }
-pub(crate) const fn cursor_position(row: usize, col: usize) -> CursorPosition {
-    CursorPosition { row, col }
-}
 
 impl CursorPosition {
     pub(crate) fn to_point(&self) -> Point {
         Point::new(self.row, self.col)
     }
 
-    pub(crate) fn in_range(&self, start: Point, end: Point) -> bool {
+    pub(crate) const fn from_point(point: Point) -> CursorPosition {
+        CursorPosition {
+            row: point.row,
+            col: point.column,
+        }
+    }
+
+    pub(crate) const fn new(row: usize, col: usize) -> CursorPosition {
+        CursorPosition { row, col }
+    }
+
+    pub(crate) fn in_range(&self, range: std::ops::Range<Point>) -> bool {
         let cursor = self.to_point();
-        cursor >= start && cursor <= end
+        range.contains(&cursor)
     }
 }
 

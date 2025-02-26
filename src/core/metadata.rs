@@ -1,11 +1,10 @@
-use super::types::{cursor_position, CursorPosition};
+use super::types::CursorPosition;
 
 #[derive(Clone)]
 pub(crate) enum RunnableMeta {
     Golang {
         package: String,
         build_tags: Vec<String>,
-        point: CursorPosition,
     },
 }
 
@@ -14,7 +13,6 @@ impl RunnableMeta {
         RunnableMeta::Golang {
             package: String::new(),
             build_tags: Vec::new(),
-            point: cursor_position(0, 0),
         }
     }
 }
