@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod test {
-    use std::{fs, panic};
 
-    use googletest::assert_that;
-    use googletest::prelude::*;
-
+    use crate::core::enums;
     use crate::framework::golang::gotest::get_parent_test;
     use crate::framework::golang::gotest::golang_subtests::get_sub_tests;
     use crate::{
         core::types::{self, Buffer, Target},
         framework::golang::{common, gotest},
     };
+    use googletest::assert_that;
+    use googletest::prelude::*;
+    use rstest::rstest;
 
     #[test]
     fn no_test_function() {
@@ -70,7 +70,7 @@ mod test {
             "src/fixtures/golang/base_test.go".to_string(),
             types::CursorPosition::new(16, 3),
         );
-        let target = Target::new(crate::core::enums::ToolCategory::TestRunner, buffer);
+        let target = Target::new(enums::ToolCategory::TestRunner, buffer);
         let tree = common::utils::parse_tree(content);
         assert_that!(tree, ok(anything()));
         let tree = tree.unwrap();
@@ -87,11 +87,20 @@ mod test {
     }
 
     #[gtest]
-    fn get_sub_test_string_literal() {
+    #[rstest]
+    #[case(enums::Search::InFile, types::CursorPosition::new(16, 3), 2, vec!["TestSample/case_a", "TestSample/case_b"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(16, 3), 1, vec![ "TestSample/case_b"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(13, 3), 1, vec![ "TestSample/case_a"])]
+    fn get_sub_test_string_literal(
+        #[case] search: enums::Search,
+        #[case] position: types::CursorPosition,
+        #[case] expected_num_of_tests: usize,
+        #[case] expected_test_names: Vec<&str>,
+    ) {
         let content = r#"
         package golang
         import (
-          l "testing"
+          "testing"
 
           "github.com/stretchr/testify/assert"
         )
@@ -114,21 +123,16 @@ mod test {
         }
         "#;
 
-        let buffer = Buffer::new(
-            content,
-            "run_test.go".to_string(),
-            types::CursorPosition::new(16, 3),
-        );
-        let mut target = Target::new(crate::core::enums::ToolCategory::TestRunner, buffer);
-        target.override_search_strategy(crate::core::enums::Search::InFile);
+        let buffer = Buffer::new(content, "run_test.go".to_string(), position);
+        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        target.override_search_strategy(search);
 
         let tree = common::utils::parse_tree(content);
         assert_that!(tree, ok(anything()));
         let tree = tree.unwrap();
         let mut walker = tree.walk();
 
-        let cursor = types::CursorPosition::new(13, 3);
-        walker.goto_first_child_for_point(cursor.to_point());
+        walker.goto_first_child_for_point(position.to_point());
 
         let node = walker.node();
         let parent_runnable = get_parent_test(Some(node), &target);
@@ -143,6 +147,10 @@ mod test {
         // assert
         assert_that!(res.is_some(), eq(true));
         let res = res.unwrap();
-        expect_that!(res.len(), eq(2))
+        assert_that!(res.len(), eq(expected_num_of_tests));
+        for ts in expected_test_names {
+            let runnable = res.iter().find(|&x| x.name == ts);
+            assert_that!(runnable.is_some(), eq(true));
+        }
     }
 }

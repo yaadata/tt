@@ -178,6 +178,28 @@ pub(in crate::framework::golang) mod golang_subtests {
         get_string_literal_subtests(node, target.buffer.content, parent, cursor_position)
     }
 
+    // get_string_literal_subtests
+    // Example:
+    // package golang
+    // import (
+    //   "testing"
+    //
+    //   "github.com/stretchr/testify/assert"
+    // )
+    //
+    // func sample_add(a, b int) int {
+    //   return a + b
+    // }
+    //
+    // func TestSample(t *testing.T) {
+    //     t.Run("case_a", func(t *testing.T){
+    //       assert.Equal(t, 1, sample_add(1, 0))
+    //     })
+    //     t.Run("case_b", func(t *testing.T){
+    //       assert.Equal(t, 2, sample_add(1, 2))
+    //     })
+    // }
+
     fn get_string_literal_subtests(
         node: Node,
         content: &str,
@@ -216,7 +238,8 @@ pub(in crate::framework::golang) mod golang_subtests {
         "#;
 
         let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
-        let subcase_capture_index = query.capture_index_for_name("test.case.name.value")?;
+        let subcase_name_index = query.capture_index_for_name("test.case.name.value")?;
+        let subcase_index = query.capture_index_for_name("test.case")?;
         let mut cursor = QueryCursor::new();
         cursor.set_point_range(ops::Range {
             start: parent.range.start.to_point(),
@@ -226,32 +249,41 @@ pub(in crate::framework::golang) mod golang_subtests {
         let mut runnables = vec![];
 
         for node_matched in query_matches {
-            let capture = node_matched
+            let subtest_capture = node_matched
                 .captures
                 .iter()
-                .find(|capture| capture.index == subcase_capture_index);
-            if let Some(position) = cursor_position {
-                if let Some(capture) = capture {
-                    let r = capture.node.range();
-                    if !position.in_range(std::ops::Range {
-                        start: r.start_point,
-                        end: r.end_point,
-                    }) {
-                        continue;
-                    }
-                }
-            }
-            if capture.is_none() {
+                .find(|capture| capture.index == subcase_index)
+                .map(|capture| capture.node);
+
+            if subtest_capture.is_none() {
                 continue;
             }
-            let capture = capture.unwrap();
-            let subtest = node_text(capture.node, content);
+
+            let subtest_node = subtest_capture.unwrap();
+            if let Some(position) = cursor_position {
+                let r = subtest_node.range();
+                if !position.in_range(std::ops::Range {
+                    start: r.start_point,
+                    end: r.end_point,
+                }) {
+                    continue;
+                }
+            }
+            let subtest = node_matched
+                .captures
+                .iter()
+                .find(|capture| capture.index == subcase_name_index)
+                .map(|capture| node_text(capture.node, content));
+            if subtest.is_none() {
+                continue;
+            }
+            let subtest = subtest.unwrap();
             let runnable = Runnable {
-                name: parent.name.to_owned() + "/" + subtest.as_str(),
+                name: parent.name.to_owned() + "/" + subtest.replace("\"", "").as_str(),
                 filepath: parent.filepath.clone(),
                 range: std::ops::Range {
-                    start: CursorPosition::from_point(capture.node.start_position()),
-                    end: CursorPosition::from_point(capture.node.end_position()),
+                    start: CursorPosition::from_point(subtest_node.start_position()),
+                    end: CursorPosition::from_point(subtest_node.end_position()),
                 },
                 meta: crate::core::metadata::RunnableMeta::default_golang(),
             };

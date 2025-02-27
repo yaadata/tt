@@ -6,12 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func sample_add(a, b int) int {
-	return a + b
-}
-
 // comment
-func TestSampleAdd(t *testing.T) {
+func TestBaseCase(t *testing.T) {
 	// arrange
 	a := 2
 	b := 3

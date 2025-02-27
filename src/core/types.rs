@@ -52,7 +52,7 @@ impl CursorPosition {
 
     pub(crate) fn in_range(&self, range: std::ops::Range<Point>) -> bool {
         let cursor = self.to_point();
-        range.contains(&cursor)
+        cursor.row >= range.start.row && cursor.row <= range.end.row
     }
 }
 

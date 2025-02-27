@@ -11,7 +11,7 @@ pub enum ToolCategory {
     TestRunner,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Search {
     Nearest,
     InMethod,
