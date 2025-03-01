@@ -156,7 +156,10 @@ pub(in crate::framework::golang) mod golang_subtests {
     use tree_sitter::{Language, Node, Query, QueryCursor};
 
     use crate::{
-        core::types::{CursorPosition, Runnable, Target},
+        core::{
+            enums,
+            types::{CursorPosition, Runnable, Target},
+        },
         treesitter::node::node_text,
     };
 
@@ -175,7 +178,27 @@ pub(in crate::framework::golang) mod golang_subtests {
             cursor_position = Some(target.buffer.position);
         }
 
-        get_string_literal_subtests(node, target.buffer.content, parent, cursor_position)
+        let mut res = vec![];
+        if let Some(t) = get_string_literal_subtests(
+            node,
+            target.buffer.content,
+            parent.to_owned(),
+            cursor_position,
+        ) {
+            res.extend(t);
+        }
+
+        if let Some(t) =
+            get_in_loop_with_named_subtest(node, target.buffer.content, parent, cursor_position)
+        {
+            res.extend(t)
+        }
+
+        if res.is_empty() {
+            None
+        } else {
+            Some(res)
+        }
     }
 
     // get_string_literal_subtests
@@ -328,23 +351,11 @@ pub(in crate::framework::golang) mod golang_subtests {
     fn get_in_loop_with_named_subtest(
         node: Node,
         content: &str,
-        cursor: Option<CursorPosition>,
+        parent: Runnable,
+        current_position: Option<CursorPosition>,
     ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
         [[
-          ;; query for function name
-          ((function_declaration 
-                    name: (identifier) @_test.parent.name
-                    parameters: (parameter_list
-                        (parameter_declaration
-                                 name: (identifier) @_test.parent.var
-                                 type: (pointer_type
-                                     (qualified_type
-                                      package: (package_identifier) @_test.param_package
-                                      name: (type_identifier) @_test.param_name))))
-                     ) @testfunc
-                  (#contains? @_test.parent.name "Test"))
-          ;; query for table tests as a part of the loop
           ((for_statement
             (range_clause
               left: (expression_list
@@ -397,38 +408,59 @@ pub(in crate::framework::golang) mod golang_subtests {
           ))
         ]]"#;
         let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
-        let function_name_capture_index = query.capture_index_for_name("_test.parent.name")?;
-        let subcase_capture_index = query.capture_index_for_name("test.subcase.definition.name")?;
+        let subcase_name_index = query.capture_index_for_name("test.case.name.value")?;
+        let subcase_index = query.capture_index_for_name("test.case")?;
         let mut cursor = QueryCursor::new();
         let query_matches = cursor.matches(&query, node, content.as_bytes());
         let mut runnables = vec![];
 
         for node_matched in query_matches {
-            let function_name = node_matched
+            let subtest_capture = node_matched
                 .captures
                 .iter()
-                .find(|capture| capture.index == function_name_capture_index)
-                .map(|capture| &content[capture.node.byte_range()]);
+                .find(|capture| capture.index == subcase_index)
+                .map(|capture| capture.node);
 
-            let subcase = node_matched
-                .captures
-                .iter()
-                .find(|capture| capture.index == subcase_capture_index)
-                .map(|capture| &content[capture.node.byte_range()]);
+            if subtest_capture.is_none() {
+                continue;
+            }
 
-            if let Some(function_name) = function_name {
-                if let Some(casename) = subcase {
-                    // let runnable = Runnable {
-                    //     name: function_name.to_string() + "/" + casename,
-                    //     filepath: "".to_string(),
-                    //     meta: crate::core::metadata::RunnableMeta::default_golang(),
-                    // };
-                    // runnables.push(runnable);
+            let subtest_node = subtest_capture.unwrap();
+            if let Some(position) = current_position {
+                let r = subtest_node.range();
+                if !position.in_range(std::ops::Range {
+                    start: r.start_point,
+                    end: r.end_point,
+                }) {
+                    continue;
                 }
             }
+            let subtest = node_matched
+                .captures
+                .iter()
+                .find(|capture| capture.index == subcase_name_index)
+                .map(|capture| node_text(capture.node, content));
+            if subtest.is_none() {
+                continue;
+            }
+            let subtest = subtest.unwrap();
+            let runnable = Runnable {
+                name: parent.name.to_owned() + "/" + subtest.replace("\"", "").as_str(),
+                filepath: parent.filepath.clone(),
+                range: std::ops::Range {
+                    start: CursorPosition::from_point(subtest_node.start_position()),
+                    end: CursorPosition::from_point(subtest_node.end_position()),
+                },
+                meta: crate::core::metadata::RunnableMeta::default_golang(),
+            };
+            runnables.push(runnable);
         }
 
-        Some(runnables)
+        if runnables.is_empty() {
+            None
+        } else {
+            Some(runnables)
+        }
     }
 
     // get_in_loop_with_unnamed_subtests
