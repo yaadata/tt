@@ -53,4 +53,4 @@ jobs:
           tool: nextest
 
       - name: Run tests
-        run: cargo nextest run --failure-output=immediate --success-output=never --lib
+        run: cargo nextest run --failure-output=immediate --success-output=never --cargo-quiet --lib
