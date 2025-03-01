@@ -10,6 +10,8 @@ keywords = ["neovim", "plugin", "development-tools", "testing"]
 
 [lib]
 crate-type = ["cdylib"]
+name = "examen"
+path = "./lib/lib.rs"
 
 [dependencies]
 mlua = { version = "0.10.2", features = ["luajit",  "vendored"]}
