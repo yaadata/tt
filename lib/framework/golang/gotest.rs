@@ -156,10 +156,7 @@ pub(in crate::framework::golang) mod golang_subtests {
     use tree_sitter::{Language, Node, Query, QueryCursor};
 
     use crate::{
-        core::{
-            enums,
-            types::{CursorPosition, Runnable, Target},
-        },
+        core::types::{CursorPosition, Runnable, Target},
         treesitter::node::node_text,
     };
 
