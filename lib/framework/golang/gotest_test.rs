@@ -104,4 +104,53 @@ mod test {
             assert_that!(runnable.is_some(), eq(true));
         }
     }
+
+    #[gtest]
+    fn get_sub_test_string_literal_no_test() {
+        let content = r#"
+        package golang
+        import (
+          "testing"
+
+          "github.com/stretchr/testify/assert"
+        )
+
+        func sample_add(a, b int) int {
+          return a + b
+        }
+
+        func TestSample(t *testing.T) {
+           assert.Equal(t, 1, sample_add(1, 0))
+           assert.Equal(t, 2, sample_add(1, 2))
+        }
+        "#;
+        let position = types::CursorPosition::new(13, 3);
+        let buffer = Buffer::new(
+            content,
+            "run_test.go".to_string(),
+            types::CursorPosition::new(13, 3),
+        );
+        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        target.override_search_strategy(enums::Search::InFile);
+
+        let tree = common::utils::parse_tree(content);
+        assert_that!(tree, ok(anything()));
+        let tree = tree.unwrap();
+        let mut walker = tree.walk();
+
+        walker.goto_first_child_for_point(position.to_point());
+
+        let node = walker.node();
+        let parent_runnable = get_parent_test(Some(node), &target);
+        assert_that!(parent_runnable.is_some(), eq(true));
+        let parent_runnable = parent_runnable.unwrap();
+        assert_eq!(parent_runnable.name, "TestSample");
+
+        walker.reset(node);
+        // act
+        let res = get_sub_tests(Some(node), Some(parent_runnable), &target);
+
+        // assert
+        assert_that!(res.is_some(), eq(false));
+    }
 }
