@@ -405,7 +405,7 @@ pub(in crate::framework::golang) mod golang_subtests {
           ))
         ]]"#;
         let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
-        let subcase_name_index = query.capture_index_for_name("test.case.name.value")?;
+        let subcase_name_index = query.capture_index_for_name("test.case.field.value")?;
         let subcase_index = query.capture_index_for_name("test.case")?;
         let mut cursor = QueryCursor::new();
         let query_matches = cursor.matches(&query, node, content.as_bytes());
