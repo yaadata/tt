@@ -168,6 +168,7 @@ mod test {
         #[case] expected_num_of_tests: usize,
         #[case] expected_test_names: Vec<&str>,
     ) {
+        // ARRANGE
         let content = r#"
         package golang
         import (
@@ -226,10 +227,11 @@ mod test {
         assert_eq!(parent_runnable.name, "TestInLoopWithNamedSubtest");
 
         walker.reset(node);
-        // act
+
+        // ACT
         let res = get_sub_tests(Some(node), Some(parent_runnable), &target);
 
-        // assert
+        // ASSERT
         assert_that!(res.is_some(), eq(true));
         let res = res.unwrap();
         assert_that!(res.len(), eq(expected_num_of_tests));
