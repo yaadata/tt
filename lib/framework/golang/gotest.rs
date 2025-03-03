@@ -180,6 +180,8 @@ pub(in crate::framework::golang) mod golang_subtests {
             get_string_literal_subtests,
             get_in_loop_with_named_subtests,
             get_in_loop_with_unnamed_subtests,
+            get_in_loop_typed_subcase_with_unnamed_case_fields,
+            get_in_loop_typed_subcase_with_named_case_fields,
         ];
         for func in finders {
             if let Some(t) = func(
@@ -535,7 +537,7 @@ pub(in crate::framework::golang) mod golang_subtests {
     // 		})
     // 	}
     // }
-    fn get_in_loop_typed_testcase_with_unnamed_case_fields(
+    fn get_in_loop_typed_subcase_with_unnamed_case_fields(
         node: Node,
         content: &str,
         parent: Runnable,
@@ -631,7 +633,12 @@ pub(in crate::framework::golang) mod golang_subtests {
     // 		})
     // 	}
     // }
-    fn get_in_loop_typed_testcase_with_named_case_fields() -> Option<Vec<Runnable>> {
+    fn get_in_loop_typed_subcase_with_named_case_fields(
+        node: Node,
+        content: &str,
+        parent: Runnable,
+        current_position: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
 		        [[
               ;; query for function name
@@ -705,7 +712,7 @@ pub(in crate::framework::golang) mod golang_subtests {
                 )
               ))
             ]]"#;
-        todo!()
+        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
     }
 
     // get_out_loop_named_tabletests
