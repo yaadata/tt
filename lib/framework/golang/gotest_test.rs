@@ -331,12 +331,12 @@ mod test {
 
     #[gtest]
     #[rstest]
-    #[case(enums::Search::InFile, types::CursorPosition::new(19, 3), 2, vec!["TestInLoopWithNamedSubtest/base case", "TestInLoopWithNamedSubtest/case 1"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(20, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(21, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(25, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(26, 3), 1, vec!["TestInLoopWithNamedSubtest/case 1"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(31, 3), 1, vec!["TestInLoopWithNamedSubtest/case 1"])]
+    #[case(enums::Search::InFile, types::CursorPosition::new(19, 3), 2, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/base case", "TestGetInLoopTypedSubcaseWithUnnamedCaseFields/case 1"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(20, 3), 1, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(21, 3), 1, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(25, 3), 1, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(26, 3), 1, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/case 1"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(31, 3), 1, vec!["TestGetInLoopTypedSubcaseWithUnnamedCaseFields/case 1"])]
     fn get_in_loop_typed_subcase_with_unnamed_case_fields(
         #[case] search: enums::Search,
         #[case] position: types::CursorPosition,
