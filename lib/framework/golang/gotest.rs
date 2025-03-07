@@ -641,19 +641,6 @@ pub(in crate::framework::golang) mod golang_subtests {
     ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
 		        [[
-              ;; query for function name
-              ((function_declaration 
-                                name: (identifier) @_test.parent.name
-                                parameters: (parameter_list
-                                    (parameter_declaration
-                                             name: (identifier) @_test.parent.var
-                                             type: (pointer_type
-                                                 (qualified_type
-                                                  package: (package_identifier) @_test.param_package
-                                                  name: (type_identifier) @_test.param_name))))
-                                 ) @testfunc
-                              (#contains? @_test.parent.name "Test"))
-              ;; query for list table tests (wrapped in loop)
               (((type_declaration
                   (type_spec
                       name: (type_identifier) @test.case.variable.name
@@ -683,9 +670,9 @@ pub(in crate::framework::golang) mod golang_subtests {
                 						(keyed_element
                 							(literal_element
                 									(identifier)
-                							)  @test.case.name.field
+                							)  @test.case.field.name
                 							(literal_element
-                								(interpreted_string_literal) @test.case.name.value
+                								(interpreted_string_literal) @test.case.field.value
                 						)
                 					)
                 				) @test.case
