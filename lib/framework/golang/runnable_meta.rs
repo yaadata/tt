@@ -1,10 +1,10 @@
 use crate::core::{metadata::RunnableMeta, types::CursorPosition};
 
 impl RunnableMeta {
-    pub(in crate::framework::golang) fn set_build_tags(&mut self, tags: String) {
+    pub(in crate::framework::golang) fn extend_build_tags(&mut self, tags: Vec<String>) {
         match self {
             RunnableMeta::Golang { build_tags, .. } => {
-                build_tags.push(tags);
+                build_tags.extend(tags);
             }
         }
     }

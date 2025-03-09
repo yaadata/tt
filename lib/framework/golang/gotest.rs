@@ -1,3 +1,4 @@
+use std::ops;
 use std::ops::Range;
 
 use crate::core::errors::FrameworkError;
@@ -44,6 +45,90 @@ impl GotestProvider {
     pub fn new() -> Self {
         Self {}
     }
+
+    fn get_parent_test(&self, node: Option<Node>, target: &Target) -> Option<Vec<Runnable>> {
+        let node = node?;
+        let current_node_position = node.start_position();
+        let query_pattern = r#"
+            [[((function_declaration 
+                    name: (identifier) @test_name
+                    parameters: (parameter_list
+                        (parameter_declaration
+                                 name: (identifier)
+                                 type: (pointer_type
+                                     (qualified_type
+                                      package: (package_identifier) @_param_package
+                                      name: (type_identifier) @_param_name))))
+                     ) @testfunc
+                  (#contains? @test_name "Test"))]]
+            "#;
+        let content = target.buffer.content;
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern).ok()?;
+        let test_name_index = query.capture_index_for_name("test_name")?;
+        let test_function_index = query.capture_index_for_name("testfunc")?;
+        let mut cursor = QueryCursor::new();
+        let query_matches = cursor.matches(&query, node, content.as_bytes());
+        let mut parent_runnables: Vec<Runnable> = vec![];
+        let find_single_test_method = target
+            .search_strategy
+            .eq(&crate::core::enums::Search::Nearest)
+            || target
+                .search_strategy
+                .eq(&crate::core::enums::Search::InMethod);
+        'L: for node_matched in query_matches {
+            let function_node = node_matched
+                .captures
+                .iter()
+                .filter(|c| c.index == test_function_index)
+                .map(|c| c.node)
+                .next();
+
+            if function_node.is_none() {
+                continue;
+            }
+
+            let function_node = function_node.unwrap();
+
+            for m in node_matched
+                .captures
+                .iter()
+                .filter(|c| c.index == test_name_index)
+            {
+                if find_single_test_method {
+                    if m.node.start_position().row <= current_node_position.row
+                        && m.node.end_position().row >= current_node_position.row
+                    {
+                        parent_runnables.push(Runnable {
+                            name: crate_treesitter_node::node_text(m.node, content),
+                            filepath: target.buffer.filepath.to_string(),
+                            range: Range {
+                                start: CursorPosition::from_point(function_node.start_position()),
+                                end: CursorPosition::from_point(function_node.end_position()),
+                            },
+                            meta: RunnableMeta::default_golang(),
+                        });
+                        break 'L;
+                    }
+                } else {
+                    parent_runnables.push(Runnable {
+                        name: crate_treesitter_node::node_text(m.node, content),
+                        filepath: target.buffer.filepath.to_string(),
+                        range: Range {
+                            start: CursorPosition::from_point(function_node.start_position()),
+                            end: CursorPosition::from_point(function_node.end_position()),
+                        },
+                        meta: RunnableMeta::default_golang(),
+                    });
+                }
+            }
+        }
+
+        if parent_runnables.is_empty() {
+            return None;
+        } else {
+            return Some(parent_runnables);
+        }
+    }
 }
 
 impl Framework for GotestProvider {
@@ -59,24 +144,27 @@ impl Framework for GotestProvider {
         "go test some".to_string()
     }
 
-    fn runnable(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
+    fn runnables(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
         let tree = common::utils::parse_tree(target.buffer.content);
         match tree {
             Ok(tree) => {
                 let build_tags = get_build_tags(tree.root_node(), target.buffer.content);
-                let runnable = get_parent_test(
+                let parent_runnables = self.get_parent_test(
                     crate_treesitter_node::position_to_nearest_point(&tree, target.buffer.position),
                     target,
                 );
                 let mut runnables: Vec<Runnable> = vec![];
-                if let Some(runnable) = runnable {
-                    let r = runnable;
-                    runnables.push(r.clone());
+                if let Some(pr) = parent_runnables {
+                    let r = pr;
+                    runnables.extend(r.clone());
                     if let Some(build_tags) = build_tags {
-                        for t in build_tags.into_iter() {
-                            let mut r = r.clone();
-                            r.meta.set_build_tags(t);
-                        }
+                        return Ok(runnables
+                            .into_iter()
+                            .map(|mut r| {
+                                r.meta.extend_build_tags(build_tags.clone());
+                                r
+                            })
+                            .collect());
                     }
                 }
 
@@ -87,67 +175,6 @@ impl Framework for GotestProvider {
             Err(e) => Err(e),
         }
     }
-}
-
-pub(crate) fn get_parent_test(node: Option<Node>, target: &Target) -> Option<Runnable> {
-    let node = node?;
-    let current_node_position = node.start_position();
-    let query_pattern = r#"
-            [[((function_declaration 
-                    name: (identifier) @test_name
-                    parameters: (parameter_list
-                        (parameter_declaration
-                                 name: (identifier)
-                                 type: (pointer_type
-                                     (qualified_type
-                                      package: (package_identifier) @_param_package
-                                      name: (type_identifier) @_param_name))))
-                     ) @testfunc
-                  (#contains? @test_name "Test"))]]
-            "#;
-    let content = target.buffer.content;
-    let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern).ok()?;
-    let test_name_index = query.capture_index_for_name("test_name")?;
-    let test_function_index = query.capture_index_for_name("testfunc")?;
-    let mut cursor = QueryCursor::new();
-    let query_matches = cursor.matches(&query, node, content.as_bytes());
-    for node_matched in query_matches {
-        let function_node = node_matched
-            .captures
-            .iter()
-            .filter(|c| c.index == test_function_index)
-            .map(|c| c.node)
-            .next();
-
-        if function_node.is_none() {
-            continue;
-        }
-
-        let function_node = function_node.unwrap();
-
-        for m in node_matched
-            .captures
-            .iter()
-            .filter(|c| c.index == test_name_index)
-        {
-            if m.node.start_position().row <= current_node_position.row
-                && m.node.end_position().row >= current_node_position.row
-            {
-                let name = crate_treesitter_node::node_text(m.node, content);
-                return Some(Runnable {
-                    name,
-                    filepath: target.buffer.filepath.to_string(),
-                    range: Range {
-                        start: CursorPosition::from_point(function_node.start_position()),
-                        end: CursorPosition::from_point(function_node.end_position()),
-                    },
-                    meta: RunnableMeta::default_golang(),
-                });
-            }
-        }
-    }
-
-    None
 }
 
 pub(in crate::framework::golang) mod golang_subtests {
@@ -182,6 +209,8 @@ pub(in crate::framework::golang) mod golang_subtests {
             get_in_loop_with_unnamed_subtests,
             get_in_loop_typed_subcase_with_unnamed_case_fields,
             get_in_loop_typed_subcase_with_named_case_fields,
+            get_out_of_loop_named_subtests,
+            get_out_of_loop_unnamed_subtests,
         ];
         for func in finders {
             if let Some(t) = func(
@@ -702,7 +731,7 @@ pub(in crate::framework::golang) mod golang_subtests {
         subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
     }
 
-    // get_out_loop_named_tabletests
+    // get_out_of_loop_named_subtests
     // Example:
     // func TestTableTest(t *testing.T) {
     // 	scenarios := []struct {
@@ -732,23 +761,14 @@ pub(in crate::framework::golang) mod golang_subtests {
     // 		})
     // 	}
     // }
-    fn get_out_loop_named_tabletests() -> Option<Vec<Runnable>> {
+    fn get_out_of_loop_named_subtests(
+        node: Node,
+        content: &str,
+        parent: Runnable,
+        current_position: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
         [[
-          ;; find function name
-          ((function_declaration 
-              name: (identifier) @_test.parent.name
-              parameters: (parameter_list
-                (parameter_declaration
-                  name: (identifier) @_test.parent.var
-                  type: (pointer_type
-                  (qualified_type
-                    package: (package_identifier) @_test.param_package
-                    name: (type_identifier) @_test.param_name))))
-                ) @testfunc
-          (#contains? @_test.parent.name "Test"))
-
-          ;; query to find out of loop cases
           ((block (
             short_var_declaration (
               (expression_list
@@ -771,10 +791,10 @@ pub(in crate::framework::golang) mod golang_subtests {
                           (literal_value
                               (keyed_element
                                   (literal_element
-                                      (identifier) @test.case.name.field	(#eq? @test.case.name.field @test.case.definition.field)
+                                      (identifier) @test.case.field.name	(#eq? @test.case.field.name @test.case.definition.field)
                                     )
                                     (literal_element
-                                      (interpreted_string_literal) @test.case.name.value
+                                      (interpreted_string_literal) @test.case.field.value
                                     )
                                 )
                             ) @test.case
@@ -807,13 +827,13 @@ pub(in crate::framework::golang) mod golang_subtests {
                         )
                     )
                 )
+          	)
           ))
-          )
         ]]"#;
-        todo!()
+        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
     }
 
-    // get_out_loop_unnamed_subtests
+    // get_out_of_loop_unnamed_subtests
     // example:
     // func TestTableTest(t *testing.T) {
     // 	scenarios := []struct {
@@ -843,23 +863,14 @@ pub(in crate::framework::golang) mod golang_subtests {
     // 		})
     // 	}
     // }
-    fn get_out_loop_unnamed_subtests() -> Option<Vec<Runnable>> {
+    fn get_out_of_loop_unnamed_subtests(
+        node: Node,
+        content: &str,
+        parent: Runnable,
+        current_position: Option<CursorPosition>,
+    ) -> Option<Vec<Runnable>> {
         const QUERY_PATTERN: &str = r#"
           [[
-              ;; find function name
-              ((function_declaration 
-                  name: (identifier) @_test.parent.name
-                  parameters: (parameter_list
-                    (parameter_declaration
-                      name: (identifier) @_test.parent.var
-                      type: (pointer_type
-                      (qualified_type
-                        package: (package_identifier) @_test.param_package
-                        name: (type_identifier) @_test.param_name))))
-                    ) @testfunc
-              (#contains? @_test.parent.name "Test"))
-
-              ;; query to find out of loop cases
               ((block (
                 short_var_declaration (
                   (expression_list
@@ -881,7 +892,7 @@ pub(in crate::framework::golang) mod golang_subtests {
                             (literal_element
                               (literal_value
                                      (literal_element
-                                        (interpreted_string_literal) @test.case.name.value
+                                        (interpreted_string_literal) @test.case.field.value
                                      )
                                     
                                 ) @test.case
@@ -917,7 +928,7 @@ pub(in crate::framework::golang) mod golang_subtests {
               ))
               )
             ]]"#;
-        todo!()
+        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
     }
 
     // subtest_loop_find_helper
