@@ -4,7 +4,7 @@ use tree_sitter::Point;
 
 use super::{enums, metadata::RunnableMeta};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Runnable {
     pub name: String,
     pub filepath: String,
@@ -28,7 +28,7 @@ impl Buffer<'_> {
     }
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct CursorPosition {
     pub row: usize,
     pub col: usize,

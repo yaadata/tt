@@ -11,10 +11,12 @@ use crate::core::{
     traits::{Framework, FrameworkProvider},
 };
 use crate::treesitter::node as crate_treesitter_node;
+use golang_subtests::get_sub_tests;
 use tree_sitter::Language;
 use tree_sitter::Node;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
+use tree_sitter::QueryMatches;
 
 use super::common;
 use super::common::utils::get_build_tags;
@@ -46,10 +48,8 @@ impl GotestProvider {
         Self {}
     }
 
-    fn get_parent_test(&self, node: Option<Node>, target: &Target) -> Option<Vec<Runnable>> {
-        let node = node?;
-        let current_node_position = node.start_position();
-        let query_pattern = r#"
+    fn get_test_function_query(&self) -> Option<Query> {
+        const QUERY_PATTERN: &str = r#"
             [[((function_declaration 
                     name: (identifier) @test_name
                     parameters: (parameter_list
@@ -62,20 +62,19 @@ impl GotestProvider {
                      ) @testfunc
                   (#contains? @test_name "Test"))]]
             "#;
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
+        Some(query)
+    }
+
+    fn get_single_test_method(&self, node: Node, target: &Target) -> Option<Runnable> {
+        let current_node_position = node.start_position();
+        let query = self.get_test_function_query()?;
         let content = target.buffer.content;
-        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern).ok()?;
         let test_name_index = query.capture_index_for_name("test_name")?;
         let test_function_index = query.capture_index_for_name("testfunc")?;
         let mut cursor = QueryCursor::new();
         let query_matches = cursor.matches(&query, node, content.as_bytes());
-        let mut parent_runnables: Vec<Runnable> = vec![];
-        let find_single_test_method = target
-            .search_strategy
-            .eq(&crate::core::enums::Search::Nearest)
-            || target
-                .search_strategy
-                .eq(&crate::core::enums::Search::InMethod);
-        'L: for node_matched in query_matches {
+        for node_matched in query_matches.into_iter() {
             let function_node = node_matched
                 .captures
                 .iter()
@@ -94,23 +93,10 @@ impl GotestProvider {
                 .iter()
                 .filter(|c| c.index == test_name_index)
             {
-                if find_single_test_method {
-                    if m.node.start_position().row <= current_node_position.row
-                        && m.node.end_position().row >= current_node_position.row
-                    {
-                        parent_runnables.push(Runnable {
-                            name: crate_treesitter_node::node_text(m.node, content),
-                            filepath: target.buffer.filepath.to_string(),
-                            range: Range {
-                                start: CursorPosition::from_point(function_node.start_position()),
-                                end: CursorPosition::from_point(function_node.end_position()),
-                            },
-                            meta: RunnableMeta::default_golang(),
-                        });
-                        break 'L;
-                    }
-                } else {
-                    parent_runnables.push(Runnable {
+                if m.node.start_position().row <= current_node_position.row
+                    && m.node.end_position().row >= current_node_position.row
+                {
+                    return Some(Runnable {
                         name: crate_treesitter_node::node_text(m.node, content),
                         filepath: target.buffer.filepath.to_string(),
                         range: Range {
@@ -123,10 +109,66 @@ impl GotestProvider {
             }
         }
 
+        None
+    }
+
+    fn get_all_test_methods(&self, node: Node, target: &Target) -> Option<Vec<Runnable>> {
+        let content = target.buffer.content;
+        const QUERY_PATTERN: &str = r#"
+            [[((function_declaration 
+                    name: (identifier) @test_name
+                    parameters: (parameter_list
+                        (parameter_declaration
+                                 name: (identifier)
+                                 type: (pointer_type
+                                     (qualified_type
+                                      package: (package_identifier) @_param_package
+                                      name: (type_identifier) @_param_name))))
+                     ) @testfunc
+                  (#contains? @test_name "Test"))]]
+            "#;
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
+        let test_name_index = query.capture_index_for_name("test_name")?;
+        let test_function_index = query.capture_index_for_name("testfunc")?;
+        let mut cursor = QueryCursor::new();
+        let query_matches = cursor.matches(&query, node, content.as_bytes());
+
+        let mut parent_runnables: Vec<Runnable> = vec![];
+        for node_matched in query_matches {
+            let function_node = node_matched
+                .captures
+                .iter()
+                .filter(|c| c.index == test_function_index)
+                .map(|c| c.node)
+                .next();
+
+            if function_node.is_none() {
+                continue;
+            }
+
+            let function_node = function_node.unwrap();
+
+            for m in node_matched
+                .captures
+                .iter()
+                .filter(|c| c.index == test_name_index)
+            {
+                parent_runnables.push(Runnable {
+                    name: crate_treesitter_node::node_text(m.node, content),
+                    filepath: target.buffer.filepath.to_string(),
+                    range: Range {
+                        start: CursorPosition::from_point(function_node.start_position()),
+                        end: CursorPosition::from_point(function_node.end_position()),
+                    },
+                    meta: RunnableMeta::default_golang(),
+                });
+            }
+        }
+
         if parent_runnables.is_empty() {
-            return None;
+            None
         } else {
-            return Some(parent_runnables);
+            Some(parent_runnables)
         }
     }
 }
@@ -145,34 +187,65 @@ impl Framework for GotestProvider {
     }
 
     fn runnables(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
-        let tree = common::utils::parse_tree(target.buffer.content);
-        match tree {
-            Ok(tree) => {
-                let build_tags = get_build_tags(tree.root_node(), target.buffer.content);
-                let parent_runnables = self.get_parent_test(
-                    crate_treesitter_node::position_to_nearest_point(&tree, target.buffer.position),
-                    target,
-                );
-                let mut runnables: Vec<Runnable> = vec![];
-                if let Some(pr) = parent_runnables {
-                    let r = pr;
-                    runnables.extend(r.clone());
-                    if let Some(build_tags) = build_tags {
-                        return Ok(runnables
-                            .into_iter()
-                            .map(|mut r| {
-                                r.meta.extend_build_tags(build_tags.clone());
-                                r
-                            })
-                            .collect());
+        /*
+         * Goals
+         *   - Search set to nearest, return singular test.
+         *       If the test contains a subtest, check if that subtest contains the cursory position
+         *   - Search set to method, return singular top level test
+         *   - Search set to file, return all test names in a file
+         *   -
+         * */
+        let tree = common::utils::parse_tree(target.buffer.content)?;
+        let mut walker = tree.walk();
+        walker.goto_first_child_for_point(target.buffer.position.to_point());
+        let walker_node = walker.node();
+        match target.search_strategy {
+            crate::core::enums::Search::File => {
+                let parent_runnables = self.get_all_test_methods(walker_node, target);
+                if parent_runnables.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found no tests in this file".to_string(),
+                    ));
+                }
+                let parent_runnables = parent_runnables.unwrap();
+                let mut res: Vec<Runnable> = vec![];
+                for parent in parent_runnables.into_iter() {
+                    let subtests =
+                        golang_subtests::get_sub_tests(walker_node, parent.to_owned(), target);
+                    if let Some(sub) = subtests {
+                        res.extend(sub);
+                    } else {
+                        res.push(parent);
                     }
                 }
-
-                Err(FrameworkError::NotFoundError(
-                    "no test found at the current position".to_string(),
-                ))
+                Ok(res)
             }
-            Err(e) => Err(e),
+            crate::core::enums::Search::Method => {
+                let res = self.get_single_test_method(walker_node, target);
+                if res.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found at position".to_string(),
+                    ));
+                }
+                Ok(vec![res.unwrap()])
+            }
+            crate::core::enums::Search::Nearest => {
+                let parent_runnable = self.get_single_test_method(walker_node, target);
+                if parent_runnable.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found at position".to_string(),
+                    ));
+                }
+
+                let parent_runnable = parent_runnable.unwrap();
+                let subtests =
+                    golang_subtests::get_sub_tests(walker_node, parent_runnable.to_owned(), target);
+                if subtests.is_none() {
+                    return Ok(vec![parent_runnable]);
+                }
+
+                Ok(subtests.unwrap())
+            }
         }
     }
 }
@@ -188,12 +261,10 @@ pub(in crate::framework::golang) mod golang_subtests {
     };
 
     pub(in crate::framework::golang) fn get_sub_tests(
-        node: Option<Node>,
-        parent: Option<Runnable>,
+        node: Node,
+        parent: Runnable,
         target: &Target,
     ) -> Option<Vec<Runnable>> {
-        let parent = parent?;
-        let node = node?;
         let mut cursor_position = None;
         if target
             .search_strategy
