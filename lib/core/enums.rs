@@ -13,9 +13,10 @@ pub enum ToolCategory {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Search {
+    // Nearest - peaking the nearest eligible test
     Nearest,
-    InMethod,
-    InFile,
-    InDirectory,
-    InProject,
+    // Method - find the name of the parent test method
+    Method,
+    // File - find all the tests in a file
+    File,
 }

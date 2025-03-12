@@ -1,6 +1,6 @@
 use super::types::CursorPosition;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum RunnableMeta {
     Golang {
         package: String,
