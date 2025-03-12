@@ -11,7 +11,7 @@ pub enum ToolCategory {
     TestRunner,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Search {
     // Nearest - peaking the nearest eligible test
     Nearest,
@@ -19,4 +19,10 @@ pub enum Search {
     Method,
     // File - find all the tests in a file
     File,
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub struct SearchDescriptor {
+    pub(crate) search: Search,
+    pub(crate) description: String,
 }
