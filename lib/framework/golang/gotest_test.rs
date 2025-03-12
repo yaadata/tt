@@ -5,7 +5,7 @@ mod test {
     use crate::core::traits::Framework;
     use crate::{
         core::types::{self, Buffer, Target},
-        framework::golang::{common, gotest},
+        framework::golang::gotest,
     };
     use googletest::assert_that;
     use googletest::prelude::*;
@@ -604,5 +604,32 @@ mod test {
             let runnable = res.iter().find(|&x| x.name == ts);
             assert_that!(runnable.is_some(), eq(true));
         }
+    }
+
+    #[gtest]
+    #[rstest]
+    #[case("Test Nearest", Some(enums::Search::Nearest))]
+    #[case("Test Function", Some(enums::Search::Method))]
+    #[case("Test File", Some(enums::Search::File))]
+    #[case("Test Directory", None)]
+    fn search_strategy_by_description(
+        #[case] description: &str,
+        #[case] expected: Option<enums::Search>,
+    ) {
+        // arrange
+        let provider = gotest::GotestProvider::new();
+        // act
+        let actual = provider.search_strategy_by_description(description);
+        // assert
+        assert_eq!(expected, actual)
+    }
+
+    #[gtest]
+    fn search_strategies() {
+        let provider = gotest::GotestProvider::new();
+        // act
+        let actual = provider.search_strategies();
+        // assert
+        assert_that!(actual.len(), eq(3))
     }
 }

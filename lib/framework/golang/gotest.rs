@@ -1,4 +1,4 @@
-use std::ops;
+use std::collections::HashSet;
 use std::ops::Range;
 
 use crate::core::errors::FrameworkError;
@@ -11,15 +11,12 @@ use crate::core::{
     traits::{Framework, FrameworkProvider},
 };
 use crate::treesitter::node as crate_treesitter_node;
-use golang_subtests::get_sub_tests;
 use tree_sitter::Language;
 use tree_sitter::Node;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
-use tree_sitter::QueryMatches;
 
 use super::common;
-use super::common::utils::get_build_tags;
 
 pub struct GotestProvider;
 
@@ -31,7 +28,7 @@ impl FrameworkProvider for GotestProvider {
     }
 
     fn name(&self) -> &'static str {
-        "gotest"
+        "GoTest"
     }
 
     fn language(&self) -> Langauge {
@@ -246,6 +243,36 @@ impl Framework for GotestProvider {
 
                 Ok(subtests.unwrap())
             }
+        }
+    }
+
+    fn search_strategies(&self) -> HashSet<crate::core::enums::SearchDescriptor> {
+        let mut res = HashSet::new();
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::Nearest,
+            description: "Test Nearest".to_string(),
+        });
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::Method,
+            description: "Test Function".to_string(),
+        });
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::File,
+            description: "Test File".to_string(),
+        });
+
+        res
+    }
+
+    fn search_strategy_by_description(
+        &self,
+        description: &str,
+    ) -> Option<crate::core::enums::Search> {
+        match description {
+            "Test Nearest" => Some(crate::core::enums::Search::Nearest),
+            "Test Function" => Some(crate::core::enums::Search::Method),
+            "Test File" => Some(crate::core::enums::Search::File),
+            _ => None,
         }
     }
 }
