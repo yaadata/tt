@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone, Hash)]
 pub enum Language {
+    Unsupported,
     #[serde(rename = "go")]
     Golang,
     #[serde(rename = "rust")]
@@ -18,6 +19,7 @@ impl Language {
             Language::Golang => vec!["go", "golang"],
             Language::Rust => vec!["rust", "rs"],
             Language::Python => vec!["python", "py"],
+            _ => vec![],
         }
     }
 }
@@ -35,8 +37,8 @@ impl FromStr for Language {
     }
 }
 
-#[derive(PartialEq, Eq, Serialize, Deserialize)]
-pub enum ToolCategory {
+#[derive(PartialEq, Eq, Serialize, Deserialize, Clone, Hash)]
+pub enum Capability {
     #[serde(rename = "debug")]
     Debugger,
     #[serde(rename = "test")]
@@ -51,10 +53,4 @@ pub enum Search {
     Method,
     // File - find all the tests in a file
     File,
-}
-
-#[derive(PartialEq, Eq, Hash)]
-pub struct SearchDescriptor {
-    pub(crate) search: Search,
-    pub(crate) description: String,
 }

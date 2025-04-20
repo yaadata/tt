@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::{
-    enums::{Language, ToolCategory},
+    enums::{Capability, Language},
     traits::{Framework, FrameworkProvider},
 };
 
@@ -30,12 +30,12 @@ impl FrameworkRegistry {
 
     pub fn get_frameworks_by_category_and_language(
         &self,
-        category: ToolCategory,
+        category: Capability,
         lang: Language,
     ) -> Vec<Box<dyn Framework>> {
         self.providers
             .values()
-            .filter(|p| return p.category() == category && p.language() == lang)
+            .filter(|p| p.capability() == category && p.language() == lang)
             .map(|p| p.create())
             .collect()
     }

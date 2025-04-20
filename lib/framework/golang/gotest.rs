@@ -4,12 +4,14 @@ use std::sync::LazyLock;
 
 use crate::core::errors::FrameworkError;
 use crate::core::metadata::RunnableMeta;
+use crate::core::types::Command;
 use crate::core::types::CursorPosition;
 use crate::core::types::Runnable;
 use crate::core::types::Target;
 use crate::core::{
-    enums::ToolCategory,
+    enums::Capability,
     traits::{Framework, FrameworkProvider},
+    types::CapabilityDetails,
 };
 
 use super::common;
@@ -24,24 +26,26 @@ pub struct GotestProvider;
 
 static FILE_SUFFIX: &str = "_test.go";
 
-static SEARCH_STRATEGIES: LazyLock<HashSet<crate::core::enums::SearchDescriptor>> =
-    LazyLock::new(|| {
-        let mut res = HashSet::with_capacity(3);
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::Nearest,
-            description: "GoTest Nearest".to_string(),
-        });
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::Method,
-            description: "GotTest Function".to_string(),
-        });
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::File,
-            description: "GoTest File".to_string(),
-        });
-
-        res
+static SEARCH_STRATEGIES: LazyLock<HashSet<CapabilityDetails>> = LazyLock::new(|| {
+    let mut res = HashSet::with_capacity(3);
+    res.insert(CapabilityDetails {
+        capability: Capability::TestRunner,
+        search: crate::core::enums::Search::Nearest,
+        description: "Test Nearest".to_string(),
     });
+    res.insert(CapabilityDetails {
+        capability: Capability::TestRunner,
+        search: crate::core::enums::Search::Method,
+        description: "Test Function".to_string(),
+    });
+    res.insert(CapabilityDetails {
+        capability: Capability::TestRunner,
+        search: crate::core::enums::Search::File,
+        description: "Test File".to_string(),
+    });
+
+    res
+});
 
 impl FrameworkProvider for GotestProvider {
     fn create(&self) -> Box<dyn Framework> {
@@ -56,8 +60,106 @@ impl FrameworkProvider for GotestProvider {
         crate_language::Golang
     }
 
-    fn category(&self) -> ToolCategory {
-        ToolCategory::TestRunner
+    fn capability(&self) -> Capability {
+        Capability::TestRunner
+    }
+}
+
+impl Framework for GotestProvider {
+    fn detect(&self, target: &Target) -> bool {
+        if target.category != self.capability() {
+            return false;
+        }
+
+        target.buffer.filepath.to_string().ends_with(FILE_SUFFIX)
+    }
+
+    fn generate_command(&self, runnable: Runnable) -> Command {
+        let mut cmd = Command {
+            command: "go".to_string(),
+            args: vec!["test".to_string(), "-v".to_string()],
+        };
+
+        cmd.args.push(runnable.filepath);
+        if let Some(meta) = runnable.meta.get_meta() {
+            if !meta.build_tags.is_empty() {
+                cmd.args
+                    .push(format!("-tags={}", meta.build_tags.join(",")));
+            }
+        }
+        cmd
+    }
+
+    fn runnables(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
+        /*
+         * Goals
+         *   - Search set to nearest, return singular test.
+         *       If the test contains a subtest, check if that subtest contains the cursory position
+         *   - Search set to method, return singular top level test
+         *   - Search set to file, return all test names in a file
+         *   -
+         * */
+        let tree = common::utils::parse_tree(target.buffer.content)?;
+        let mut walker = tree.walk();
+        walker.goto_first_child_for_point(target.buffer.position.to_point());
+        let walker_node = walker.node();
+        match target.search_strategy {
+            crate::core::enums::Search::File => {
+                let parent_runnables = self.get_all_test_methods(walker_node, target);
+                if parent_runnables.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found no tests in this file".to_string(),
+                    ));
+                }
+                let parent_runnables = parent_runnables.unwrap();
+                let mut res: Vec<Runnable> = vec![];
+                for parent in parent_runnables.into_iter() {
+                    let subtests =
+                        golang_subtests::get_sub_tests(walker_node, parent.to_owned(), target);
+                    if let Some(sub) = subtests {
+                        res.extend(sub);
+                    } else {
+                        res.push(parent);
+                    }
+                }
+                Ok(res)
+            }
+            crate::core::enums::Search::Method => {
+                let res = self.get_single_test_method(walker_node, target);
+                if res.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found at position".to_string(),
+                    ));
+                }
+                Ok(vec![res.unwrap()])
+            }
+            crate::core::enums::Search::Nearest => {
+                let parent_runnable = self.get_single_test_method(walker_node, target);
+                if parent_runnable.is_none() {
+                    return Err(FrameworkError::NotFoundError(
+                        "Go Test Function not found at position".to_string(),
+                    ));
+                }
+
+                let parent_runnable = parent_runnable.unwrap();
+                let subtests =
+                    golang_subtests::get_sub_tests(walker_node, parent_runnable.to_owned(), target);
+                if subtests.is_none() {
+                    return Ok(vec![parent_runnable]);
+                }
+
+                Ok(subtests.unwrap())
+            }
+        }
+    }
+
+    fn capabilities(&self) -> &HashSet<CapabilityDetails> {
+        LazyLock::force(&SEARCH_STRATEGIES)
+    }
+
+    fn search_for_capability(&self, description: &str) -> Option<&CapabilityDetails> {
+        let c = LazyLock::force(&SEARCH_STRATEGIES);
+        c.iter().find(|s| s.description == description).clone()
     }
 }
 
@@ -187,99 +289,6 @@ impl GotestProvider {
             None
         } else {
             Some(parent_runnables)
-        }
-    }
-}
-
-impl Framework for GotestProvider {
-    fn detect(&self, target: &Target) -> bool {
-        if target.category != self.category() {
-            return false;
-        }
-
-        target.buffer.filepath.to_string().ends_with(FILE_SUFFIX)
-    }
-
-    fn generate_command(&self, runnable: Runnable) -> String {
-        "go test some".to_string()
-    }
-
-    fn runnables(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError> {
-        /*
-         * Goals
-         *   - Search set to nearest, return singular test.
-         *       If the test contains a subtest, check if that subtest contains the cursory position
-         *   - Search set to method, return singular top level test
-         *   - Search set to file, return all test names in a file
-         *   -
-         * */
-        let tree = common::utils::parse_tree(target.buffer.content)?;
-        let mut walker = tree.walk();
-        walker.goto_first_child_for_point(target.buffer.position.to_point());
-        let walker_node = walker.node();
-        match target.search_strategy {
-            crate::core::enums::Search::File => {
-                let parent_runnables = self.get_all_test_methods(walker_node, target);
-                if parent_runnables.is_none() {
-                    return Err(FrameworkError::NotFoundError(
-                        "Go Test Function not found no tests in this file".to_string(),
-                    ));
-                }
-                let parent_runnables = parent_runnables.unwrap();
-                let mut res: Vec<Runnable> = vec![];
-                for parent in parent_runnables.into_iter() {
-                    let subtests =
-                        golang_subtests::get_sub_tests(walker_node, parent.to_owned(), target);
-                    if let Some(sub) = subtests {
-                        res.extend(sub);
-                    } else {
-                        res.push(parent);
-                    }
-                }
-                Ok(res)
-            }
-            crate::core::enums::Search::Method => {
-                let res = self.get_single_test_method(walker_node, target);
-                if res.is_none() {
-                    return Err(FrameworkError::NotFoundError(
-                        "Go Test Function not found at position".to_string(),
-                    ));
-                }
-                Ok(vec![res.unwrap()])
-            }
-            crate::core::enums::Search::Nearest => {
-                let parent_runnable = self.get_single_test_method(walker_node, target);
-                if parent_runnable.is_none() {
-                    return Err(FrameworkError::NotFoundError(
-                        "Go Test Function not found at position".to_string(),
-                    ));
-                }
-
-                let parent_runnable = parent_runnable.unwrap();
-                let subtests =
-                    golang_subtests::get_sub_tests(walker_node, parent_runnable.to_owned(), target);
-                if subtests.is_none() {
-                    return Ok(vec![parent_runnable]);
-                }
-
-                Ok(subtests.unwrap())
-            }
-        }
-    }
-
-    fn search_strategies(&self) -> &HashSet<crate::core::enums::SearchDescriptor> {
-        LazyLock::force(&SEARCH_STRATEGIES)
-    }
-
-    fn search_strategy_by_description(
-        &self,
-        description: &str,
-    ) -> Option<crate::core::enums::Search> {
-        match description {
-            "Test Nearest" => Some(crate::core::enums::Search::Nearest),
-            "Test Function" => Some(crate::core::enums::Search::Method),
-            "Test File" => Some(crate::core::enums::Search::File),
-            _ => None,
         }
     }
 }
