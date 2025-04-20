@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::ops::Range;
+use std::sync::LazyLock;
 
 use crate::core::errors::FrameworkError;
 use crate::core::metadata::RunnableMeta;
@@ -7,20 +8,40 @@ use crate::core::types::CursorPosition;
 use crate::core::types::Runnable;
 use crate::core::types::Target;
 use crate::core::{
-    enums::{Langauge, ToolCategory},
+    enums::ToolCategory,
     traits::{Framework, FrameworkProvider},
 };
+
+use super::common;
+use crate::core::enums::Language as crate_language;
 use crate::treesitter::node as crate_treesitter_node;
 use tree_sitter::Language;
 use tree_sitter::Node;
 use tree_sitter::Query;
 use tree_sitter::QueryCursor;
 
-use super::common;
-
 pub struct GotestProvider;
 
 static FILE_SUFFIX: &str = "_test.go";
+
+static SEARCH_STRATEGIES: LazyLock<HashSet<crate::core::enums::SearchDescriptor>> =
+    LazyLock::new(|| {
+        let mut res = HashSet::with_capacity(3);
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::Nearest,
+            description: "GoTest Nearest".to_string(),
+        });
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::Method,
+            description: "GotTest Function".to_string(),
+        });
+        res.insert(crate::core::enums::SearchDescriptor {
+            search: crate::core::enums::Search::File,
+            description: "GoTest File".to_string(),
+        });
+
+        res
+    });
 
 impl FrameworkProvider for GotestProvider {
     fn create(&self) -> Box<dyn Framework> {
@@ -31,8 +52,8 @@ impl FrameworkProvider for GotestProvider {
         "GoTest"
     }
 
-    fn language(&self) -> Langauge {
-        crate::core::enums::Langauge::Golang
+    fn language(&self) -> crate_language {
+        crate_language::Golang
     }
 
     fn category(&self) -> ToolCategory {
@@ -246,22 +267,8 @@ impl Framework for GotestProvider {
         }
     }
 
-    fn search_strategies(&self) -> HashSet<crate::core::enums::SearchDescriptor> {
-        let mut res = HashSet::new();
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::Nearest,
-            description: "Test Nearest".to_string(),
-        });
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::Method,
-            description: "Test Function".to_string(),
-        });
-        res.insert(crate::core::enums::SearchDescriptor {
-            search: crate::core::enums::Search::File,
-            description: "Test File".to_string(),
-        });
-
-        res
+    fn search_strategies(&self) -> &HashSet<crate::core::enums::SearchDescriptor> {
+        LazyLock::force(&SEARCH_STRATEGIES)
     }
 
     fn search_strategy_by_description(
