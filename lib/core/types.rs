@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use tree_sitter::Point;
 
+use self::enums::{Capability, Search};
+
 use super::{enums, metadata::RunnableMeta};
 
 #[derive(Clone, Debug)]
@@ -12,6 +14,10 @@ pub struct Runnable {
     pub meta: RunnableMeta,
 }
 
+pub struct Command {
+    pub command: String,
+    pub args: Vec<String>,
+}
 pub struct Buffer<'a> {
     pub content: &'a str,
     pub filepath: String,
@@ -57,13 +63,13 @@ impl CursorPosition {
 }
 
 pub struct Target<'a> {
-    pub category: enums::ToolCategory,
+    pub category: enums::Capability,
     pub buffer: Buffer<'a>,
     pub search_strategy: enums::Search,
 }
 
 impl Target<'_> {
-    pub fn new(category: enums::ToolCategory, buffer: Buffer) -> Target {
+    pub fn new(category: enums::Capability, buffer: Buffer) -> Target {
         Target {
             category,
             buffer,
@@ -74,4 +80,11 @@ impl Target<'_> {
     pub fn override_search_strategy(&mut self, search_strategy: enums::Search) {
         self.search_strategy = search_strategy;
     }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub struct CapabilityDetails {
+    pub(crate) capability: Capability,
+    pub(crate) search: Search,
+    pub(crate) description: String,
 }

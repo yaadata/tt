@@ -28,7 +28,7 @@ mod test {
             types::CursorPosition::new(3, 3),
         );
 
-        let mut target = Target::new(crate::core::enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(crate::core::enums::Capability::TestRunner, buffer);
         target.override_search_strategy(enums::Search::Method);
         let provider = gotest::GotestProvider::new();
 
@@ -58,7 +58,7 @@ mod test {
             types::CursorPosition::new(10, 3),
         );
 
-        let mut target = Target::new(crate::core::enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(crate::core::enums::Capability::TestRunner, buffer);
         target.override_search_strategy(enums::Search::Method);
         let provider = gotest::GotestProvider::new();
 
@@ -107,7 +107,7 @@ mod test {
         "#;
 
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -145,7 +145,7 @@ mod test {
         "#;
         let position = types::CursorPosition::new(13, 3);
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(enums::Search::Nearest);
         let provider = gotest::GotestProvider::new();
         // act
@@ -216,7 +216,7 @@ mod test {
         "#;
 
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -290,7 +290,7 @@ mod test {
         "#;
 
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -364,7 +364,7 @@ mod test {
         }
         "#;
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -440,7 +440,7 @@ mod test {
         "#;
 
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -515,7 +515,7 @@ mod test {
         }
         "#;
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -589,7 +589,7 @@ mod test {
         }
         "#;
         let buffer = Buffer::new(content, "run_test.go".to_string(), position);
-        let mut target = Target::new(enums::ToolCategory::TestRunner, buffer);
+        let mut target = Target::new(enums::Capability::TestRunner, buffer);
         target.override_search_strategy(search);
         let provider = gotest::GotestProvider::new();
 
@@ -612,23 +612,25 @@ mod test {
     #[case("Test Function", Some(enums::Search::Method))]
     #[case("Test File", Some(enums::Search::File))]
     #[case("Test Directory", None)]
-    fn search_strategy_by_description(
-        #[case] description: &str,
-        #[case] expected: Option<enums::Search>,
-    ) {
+    fn capabilities(#[case] description: &str, #[case] expected: Option<enums::Search>) {
         // arrange
         let provider = gotest::GotestProvider::new();
         // act
-        let actual = provider.search_strategy_by_description(description);
+        let actual = provider.search_for_capability(description);
         // assert
-        assert_eq!(expected, actual)
+        if expected.is_some() {
+            assert_that!(actual.is_some(), eq(true));
+            assert_that!(actual.unwrap().search, eq(&expected.unwrap()));
+        } else {
+            assert_that!(actual.is_none(), eq(true));
+        }
     }
 
     #[gtest]
-    fn search_strategies() {
+    fn ssearch_for_capability() {
         let provider = gotest::GotestProvider::new();
         // act
-        let actual = provider.search_strategies();
+        let actual = provider.capabilities();
         // assert
         assert_that!(actual.len(), eq(3))
     }

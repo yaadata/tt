@@ -1,4 +1,4 @@
-use crate::core::{metadata::RunnableMeta, types::CursorPosition};
+use crate::core::metadata::RunnableMeta;
 
 impl RunnableMeta {
     pub(in crate::framework::golang) fn extend_build_tags(&mut self, tags: Vec<String>) {
