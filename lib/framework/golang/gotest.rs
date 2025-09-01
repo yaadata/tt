@@ -13,6 +13,7 @@ use crate::core::{
     traits::{Framework, FrameworkProvider},
     types::CapabilityDetails,
 };
+use crate::framework::golang::treesitter::queries::gotest_file_test_methods;
 
 use super::treesitter::operations;
 use crate::core::enums::Language as crate_language;
@@ -235,20 +236,8 @@ impl GotestProvider {
 
     fn get_all_test_methods(&self, node: Node, target: &Target) -> Option<Vec<Runnable>> {
         let content = target.buffer.content;
-        const QUERY_PATTERN: &str = r#"
-            [[((function_declaration 
-                    name: (identifier) @test_name
-                    parameters: (parameter_list
-                        (parameter_declaration
-                                 name: (identifier)
-                                 type: (pointer_type
-                                     (qualified_type
-                                      package: (package_identifier) @_param_package
-                                      name: (type_identifier) @_param_name))))
-                     ) @testfunc
-                  (#contains? @test_name "Test"))]]
-            "#;
-        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
+        let query_pattern = &gotest_file_test_methods::query();
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern).ok()?;
         let test_name_index = query.capture_index_for_name("test_name")?;
         let test_function_index = query.capture_index_for_name("testfunc")?;
         let mut cursor = QueryCursor::new();
@@ -301,6 +290,10 @@ pub(in crate::framework::golang) mod golang_subtests {
 
     use crate::{
         core::types::{CursorPosition, Runnable, Target},
+        framework::golang::treesitter::queries::{
+            gotest_subtest_in_loop_named_fields, gotest_subtest_in_loop_unnamed_fields,
+            gotest_subtest_in_loop_unnamed_fields_struct_predefined, gotest_subtest_string_literal,
+        },
         treesitter::node::node_text,
     };
 
@@ -372,38 +365,8 @@ pub(in crate::framework::golang) mod golang_subtests {
         parent: Runnable,
         cursor_position: Option<CursorPosition>,
     ) -> Option<Vec<Runnable>> {
-        const QUERY_PATTERN: &str = r#"
-            [[
-              ;; string literal sub test
-              (((expression_statement
-                  (call_expression
-                      function: (selector_expression
-                          operand: (identifier) @testing
-                            field: (field_identifier) @testing.method (#eq? @testing.method "Run")
-                        )
-                        arguments: (argument_list
-                          (interpreted_string_literal) @test.case.name.value
-                            (func_literal
-                              parameters: (parameter_list
-                                  (parameter_declaration
-                                      name: (identifier)
-                                        type: (pointer_type
-                                          (qualified_type
-                                            package: (package_identifier) @test.case.package  
-                                              name: (type_identifier) @test.case.package.param 
-                        )	
-                      )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                ) @test.case
-              ))
-            ]]
-        "#;
-
-        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), QUERY_PATTERN).ok()?;
+        let query_pattern = &gotest_subtest_string_literal::query();
+        let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), query_pattern).ok()?;
         let subcase_name_index = query.capture_index_for_name("test.case.name.value")?;
         let subcase_index = query.capture_index_for_name("test.case")?;
         let mut cursor = QueryCursor::new();
@@ -497,60 +460,8 @@ pub(in crate::framework::golang) mod golang_subtests {
         parent: Runnable,
         current_position: Option<CursorPosition>,
     ) -> Option<Vec<Runnable>> {
-        const QUERY_PATTERN: &str = r#"
-        [[
-          ((for_statement
-            (range_clause
-              left: (expression_list
-                (identifier)
-                (identifier) @test.loop.case.variable
-              )
-              right: (composite_literal
-                type: (slice_type
-                  element: (struct_type
-                    (field_declaration_list
-                      (field_declaration
-                      	name: (field_identifier) @test.case.definition.field
-                        type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
-                      )
-                    )
-                  ) @test.case.type
-                )
-                body: (literal_value
-                  (literal_element
-                    (literal_value
-                      (keyed_element
-                        (literal_element
-                          (identifier)
-                        )  @test.case.field.name (#eq? @test.case.field.name @test.case.definition.field)
-                        (literal_element
-                          (interpreted_string_literal) @test.case.field.value
-                        )
-                      )
-                    ) @test.case
-                  )
-                )
-              )
-            )
-            body: (block
-              (expression_statement
-                (call_expression
-                  function: (selector_expression
-                    operand: (identifier) @test.loop.test
-                    field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                  )
-                  arguments: (argument_list
-                    (selector_expression
-                      operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
-                      field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
-                    ) 
-                  )
-                )
-              )
-            )
-          ))
-        ]]"#;
-        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
+        let query_pattern = &gotest_subtest_in_loop_named_fields::query();
+        subtest_loop_find_helper(node, content, query_pattern, parent, current_position)
     }
 
     // get_in_loop_with_unnamed_subtests
@@ -587,69 +498,8 @@ pub(in crate::framework::golang) mod golang_subtests {
         parent: Runnable,
         current_position: Option<CursorPosition>,
     ) -> Option<Vec<Runnable>> {
-        const QUERY_PATTERN: &str = r#"
-            [[
-              ;; query for function name
-              ((function_declaration 
-                                name: (identifier) @_test.parent.name
-                                parameters: (parameter_list
-                                    (parameter_declaration
-                                             name: (identifier) @_test.parent.var
-                                             type: (pointer_type
-                                                 (qualified_type
-                                                  package: (package_identifier) @_test.param_package
-                                                  name: (type_identifier) @_test.param_name))))
-                                 ) @testfunc
-                              (#contains? @_test.parent.name "Test"))
-              ;; query for list table tests (wrapped in loop)
-              (for_statement
-                (range_clause
-                  left: (expression_list
-                    (identifier)
-                    (identifier) @test.loop.case.variable
-                  )
-                  right: (composite_literal
-                    type: (slice_type
-                      element: (struct_type
-                        (field_declaration_list
-                          (field_declaration
-                            name: (field_identifier) @test.case.definition.field
-                            type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
-                          )
-                        )
-                      )
-                    )
-                    body: (literal_value
-                      (literal_element
-                        (literal_value
-                          (literal_element
-                            (interpreted_string_literal) @test.case.field.value
-                          )
-                        ) 
-                      ) @test.case
-                    )
-                  )
-                )
-                body: (block
-                  (expression_statement
-                    (call_expression
-                      function: (selector_expression
-                        operand: (identifier) @test.loop.test
-                        field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                      )
-                      arguments: (argument_list
-                        (selector_expression
-                          operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
-                          field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-            ]]
-        "#;
-        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
+        let query_pattern = gotest_subtest_in_loop_unnamed_fields::query();
+        subtest_loop_find_helper(node, content, &query_pattern, parent, current_position)
     }
 
     // get_in_loop_typed_testcase_with_unnamed_case_fields
@@ -687,62 +537,8 @@ pub(in crate::framework::golang) mod golang_subtests {
         parent: Runnable,
         current_position: Option<CursorPosition>,
     ) -> Option<Vec<Runnable>> {
-        const QUERY_PATTERN: &str = r#"
-            [[
-              (((type_declaration
-                  (type_spec
-                      name: (type_identifier) @test.case.variable.name
-                        type: (struct_type 
-                          (field_declaration_list
-                              (field_declaration
-                                name: (field_identifier) @test.case.definition.field
-                                type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
-                          )
-                        )
-                    ) @test.case.type
-                  )
-                ) 
-                (for_statement
-                    (range_clause
-                      left: (expression_list
-                        (identifier)
-                        (identifier) @test.loop.case.variable
-                      )
-                      right: (composite_literal
-                          type: (slice_type
-                          element: (type_identifier) @test.loop.case.variable.type (#eq? @test.loop.case.variable.type @test.case.variable.name)
-                        )
-                        body: (literal_value
-                          (literal_element
-                            (literal_value
-                              (literal_element
-                                (interpreted_string_literal) @test.case.field.value
-                              )
-                            )
-                          ) @test.case
-                        )
-                      )
-                    )
-                    body: (block
-                      (expression_statement
-                        (call_expression
-                          function: (selector_expression
-                            operand: (identifier) @test.loop.test
-                            field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                          )
-                          arguments: (argument_list
-                            (selector_expression
-                                operand: (identifier) @test.loop.test.variable (#eq? @test.loop.case.variable @test.loop.test.variable)
-                                field: (field_identifier) @test.loop.test.variable.field (#eq? @test.case.definition.field @test.loop.test.variable.field)
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-              ))
-            ]]"#;
-        subtest_loop_find_helper(node, content, QUERY_PATTERN, parent, current_position)
+        let query_pattern = gotest_subtest_in_loop_unnamed_fields_struct_predefined::query();
+        subtest_loop_find_helper(node, content, &query_pattern, parent, current_position)
     }
 
     // get_in_loop_typed_testcase_with_named_case_fields
