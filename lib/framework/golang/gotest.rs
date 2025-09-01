@@ -14,8 +14,9 @@ use crate::core::{
     types::CapabilityDetails,
 };
 
-use super::common;
+use super::treesitter::operations;
 use crate::core::enums::Language as crate_language;
+use crate::framework::golang::treesitter::operations::{get_build_tags, parse_tree};
 use crate::treesitter::node as crate_treesitter_node;
 use tree_sitter::Language;
 use tree_sitter::Node;
@@ -99,7 +100,7 @@ impl Framework for GotestProvider {
          *   - Search set to file, return all test names in a file
          *   -
          * */
-        let tree = common::utils::parse_tree(target.buffer.content)?;
+        let tree = parse_tree::op::execute(target.buffer.content)?;
         let mut walker = tree.walk();
         walker.goto_first_child_for_point(target.buffer.position.to_point());
         let walker_node = walker.node();
