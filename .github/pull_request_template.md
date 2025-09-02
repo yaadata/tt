@@ -3,12 +3,13 @@
 <!-- mention any related issue/discussions -->
 <!-- (Optional) add additional context about pull-request about. -->
 
-### Check the related fields
+### Checklist
 
 - [ ] Feature <!-- Adds a net new capability -->
       <!-- Updates the documentation and related to this repository -->
 - [ ] Enhancement <!-- updates an existing feature and adds to it -->
-- [ ] Refactor / Code Maintenance
+- [ ] Refactor <!-- Move / re-arranging code -->
+- [ ] Style <!-- Inline documentation, formatting, renames -->
 - [ ] Test <!-- updates or adds new tests -->
 - [ ] Documentation
 - [ ] Chore
