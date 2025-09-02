@@ -1,21 +1,18 @@
-## Related Issue  
-<!-- Attached the related issue -->
+### Description
 
-### Additional Context
-
+<!-- mention any related issue/discussions -->
 <!-- (Optional) add additional context about pull-request about. -->
-
-### How is it implemented
-
-<!-- How is this change implemented -->
 
 ### Check the related fields
 
-- [ ] Documentation <!-- Updates the documentation and related to this repository -->
 - [ ] Feature <!-- Adds a net new capability -->
+      <!-- Updates the documentation and related to this repository -->
 - [ ] Enhancement <!-- updates an existing feature and adds to it -->
+- [ ] Refactor / Code Maintenance
 - [ ] Test <!-- updates or adds new tests -->
+- [ ] Documentation
 - [ ] Chore
+
 <!--
 updates the way this repository is run
 - ci
