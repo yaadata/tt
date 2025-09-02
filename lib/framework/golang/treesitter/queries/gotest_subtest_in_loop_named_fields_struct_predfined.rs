@@ -9,21 +9,21 @@
 // func TestTableTest(t *testing.T) {
 // 	scenarios := []struct {
 // 		description string
-// 		a           string
+// 		a           int
 // 		b           int
 // 		expected    int
 // 	}{
 // 		{
-// 			"base case",
-// 			0,
-// 			3,
-// 			3,
+// 			description: 	"base case",
+// 			a: 				0,
+// 			b: 				3,
+// 			expected:		3,
 // 		},
 // 		{
-// 			"case 1",
-// 			1,
-// 			3,
-// 			4,
+// 			description: "case 1",
+// 			a:           1,
+// 			b:           3,
+// 			expected:    4,
 // 		},
 // 	}
 //
