@@ -161,13 +161,13 @@ mod test {
 
     #[gtest]
     #[rstest]
-    #[case(enums::Search::File, types::CursorPosition::new(19, 3), 2, vec!["TestInLoopWithNamedSubtest/base case", "TestInLoopWithNamedSubtest/case 1"])]
-    #[case(enums::Search::Method, types::CursorPosition::new(19, 3), 1, vec!["TestInLoopWithNamedSubtest"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(19, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(20, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(24, 3), 1, vec!["TestInLoopWithNamedSubtest/base case"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(25, 3), 1, vec!["TestInLoopWithNamedSubtest/case 1"])]
-    #[case(enums::Search::Nearest, types::CursorPosition::new(30, 3), 1, vec!["TestInLoopWithNamedSubtest/case 1"])]
+    #[case(enums::Search::File, types::CursorPosition::new(19, 3), 2, vec!["TestInLoopWithUnnamedSubtest/base case", "TestInLoopWithUnnamedSubtest/case 1"])]
+    #[case(enums::Search::Method, types::CursorPosition::new(19, 3), 1, vec!["TestInLoopWithUnnamedSubtest"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(19, 3), 1, vec!["TestInLoopWithUnnamedSubtest/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(20, 3), 1, vec!["TestInLoopWithUnnamedSubtest/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(24, 3), 1, vec!["TestInLoopWithUnnamedSubtest/base case"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(25, 3), 1, vec!["TestInLoopWithUnnamedSubtest/case 1"])]
+    #[case(enums::Search::Nearest, types::CursorPosition::new(30, 3), 1, vec!["TestInLoopWithUnnamedSubtest/case 1"])]
     fn get_in_loop_with_unnamed_subtests(
         #[case] search: enums::Search,
         #[case] position: types::CursorPosition,
@@ -187,7 +187,7 @@ mod test {
           return a + b
         }
 
-        func TestInLoopWithNamedSubtest(t *testing.T) {
+        func TestInLoopWithUnnamedSubtest(t *testing.T) {
           for _, tt := range []struct {
             description string
             a           int
