@@ -5,29 +5,29 @@
 // This query will find all the subtests given the struct for each
 // test implicity defines struct fields.
 //
-// example:
-// func TestTableTest(t *testing.T) {
-// 	scenarios := []struct {
-// 		description string
-// 		a           string
-// 		b           int
-// 		expected    int
-// 	}{
-// 		{
-// 			"base case",
-// 			0,
-// 			3,
-// 			3,
-// 		},
-// 		{
-// 			"case 1",
-// 			1,
-// 			3,
-// 			4,
-// 		},
-// 	}
+// Example:
+// func TestSample(t *testing.T) {
+// 	type Scenario struct {
+//     	description string
+//         a			int
+//         b			int
+//         expected	int
+//     }
 //
-// 	for _, tt := range scenarios {
+// 	for _, tt := range []Scenario{
+// 		{
+// 			description: "base case",
+// 			a:          0,
+// 			b:          3,
+// 			c:          3,
+// 		},
+// 		{
+// 			description: "case 1",
+// 			a:           1,
+// 			b:           3,
+// 			expected:    4,
+// 		},
+// 	}  {
 // 		t.Run(tt.description, func(t *testing.T) {
 // 			actual := sample_add(tt.a, tt.b)
 // 			assert.Equal(t, tt.expected, actual)
