@@ -27,9 +27,7 @@ pub(crate) mod op {
             &Language::new(tree_sitter_go::LANGUAGE),
             list_import_query_pattern.as_str(),
         );
-        println!("part 1");
         if let Result::Ok(q) = query {
-            print!("hello");
             let mut cursor = QueryCursor::new();
             let query_matches = cursor.matches(&q, root, content.as_bytes());
             if query_matches.count().gt(&0) {
