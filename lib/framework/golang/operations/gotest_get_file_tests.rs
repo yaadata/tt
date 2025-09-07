@@ -8,7 +8,7 @@ pub(crate) mod op {
             metadata::RunnableMeta,
             types::{CursorPosition, Runnable, Target},
         },
-        framework::golang::treesitter::queries::gotest_test_function,
+        framework::golang::treesitter::gotest_test_function,
         treesitter::node,
     };
 
