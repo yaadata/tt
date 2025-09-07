@@ -31,7 +31,7 @@ pub(crate) fn query() -> String {
 	          (import_declaration
     	          (import_spec_list
         	          (import_spec
-            	          path: (interpreted_string_literal) @import.path (#eq? @import.path "\{}\"")
+            	          path: (interpreted_string_literal) @import.path (#eq? @import.path "\"{}\"")
                 ))
         )
         ]]
