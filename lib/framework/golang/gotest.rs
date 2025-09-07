@@ -10,6 +10,7 @@ use crate::core::{
     traits::{Framework, FrameworkProvider},
     types::CapabilityDetails,
 };
+use crate::framework::golang::operations::detect_gotest_file;
 use crate::framework::golang::operations::gotest_get_file_tests;
 use crate::framework::golang::operations::gotest_get_subtests;
 use crate::framework::golang::operations::gotest_get_test;
@@ -65,6 +66,14 @@ impl FrameworkProvider for GotestProvider {
 
 impl Framework for GotestProvider {
     fn detect(&self, target: &Target) -> bool {
+        let tree = parse_tree::op::execute(target.buffer.content);
+        if tree.is_err() {
+            return false;
+        }
+        let tree = tree.unwrap();
+        if !detect_gotest_file::op::execute(tree.root_node(), target.buffer.content) {
+            return false;
+        }
         if target.category != self.capability() {
             return false;
         }
