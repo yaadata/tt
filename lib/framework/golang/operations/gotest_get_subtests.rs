@@ -5,7 +5,7 @@ pub(crate) mod op {
 
     use std::ops;
 
-    use crate::framework::golang::treesitter::queries::{
+    use crate::framework::golang::treesitter::{
         gotest_subtest_in_loop_named_fields, gotest_subtest_in_loop_named_fields_struct_predfined,
         gotest_subtest_in_loop_unnamed_fields,
         gotest_subtest_in_loop_unnamed_fields_struct_predefined,

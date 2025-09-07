@@ -10,10 +10,10 @@ use crate::core::{
     traits::{Framework, FrameworkProvider},
     types::CapabilityDetails,
 };
-use crate::framework::golang::treesitter::operations::gotest_get_file_tests;
-use crate::framework::golang::treesitter::operations::gotest_get_subtests;
-use crate::framework::golang::treesitter::operations::gotest_get_test;
-use crate::framework::golang::treesitter::operations::parse_tree;
+use crate::framework::golang::operations::gotest_get_file_tests;
+use crate::framework::golang::operations::gotest_get_subtests;
+use crate::framework::golang::operations::gotest_get_test;
+use crate::framework::golang::operations::parse_tree;
 
 pub struct GotestProvider {
     search_capabilities: HashSet<CapabilityDetails>,

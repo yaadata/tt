@@ -8,20 +8,21 @@ pub(crate) mod op {
             metadata::RunnableMeta,
             types::{CursorPosition, Runnable, Target},
         },
-        framework::golang::treesitter::queries::gotest_test_function,
+        framework::golang::treesitter::gotest_test_function,
         treesitter::node,
     };
 
-    pub fn execute(node: Node, target: &Target) -> Option<Runnable> {
-        let current_node_position = node.start_position();
+    pub fn execute(node: Node, target: &Target) -> Option<Vec<Runnable>> {
+        let content = target.buffer.content;
         let query_pattern = gotest_test_function::query();
         let query = Query::new(&Language::new(tree_sitter_go::LANGUAGE), &query_pattern).ok()?;
-        let content = target.buffer.content;
         let test_name_index = query.capture_index_for_name("test_name")?;
         let test_function_index = query.capture_index_for_name("testfunc")?;
         let mut cursor = QueryCursor::new();
         let query_matches = cursor.matches(&query, node, content.as_bytes());
-        for node_matched in query_matches.into_iter() {
+
+        let mut parent_runnables: Vec<Runnable> = vec![];
+        for node_matched in query_matches {
             let function_node = node_matched
                 .captures
                 .iter()
@@ -40,22 +41,22 @@ pub(crate) mod op {
                 .iter()
                 .filter(|c| c.index == test_name_index)
             {
-                if m.node.start_position().row <= current_node_position.row
-                    && m.node.end_position().row >= current_node_position.row
-                {
-                    return Some(Runnable {
-                        name: node::node_text(m.node, content),
-                        filepath: target.buffer.filepath.to_string(),
-                        range: Range {
-                            start: CursorPosition::from_point(function_node.start_position()),
-                            end: CursorPosition::from_point(function_node.end_position()),
-                        },
-                        meta: RunnableMeta::default_golang(),
-                    });
-                }
+                parent_runnables.push(Runnable {
+                    name: node::node_text(m.node, content),
+                    filepath: target.buffer.filepath.to_string(),
+                    range: Range {
+                        start: CursorPosition::from_point(function_node.start_position()),
+                        end: CursorPosition::from_point(function_node.end_position()),
+                    },
+                    meta: RunnableMeta::default_golang(),
+                });
             }
         }
 
-        None
+        if parent_runnables.is_empty() {
+            None
+        } else {
+            Some(parent_runnables)
+        }
     }
 }

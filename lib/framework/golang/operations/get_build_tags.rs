@@ -1,5 +1,5 @@
 pub(crate) mod op {
-    use crate::{framework::golang::treesitter::queries::build_tags, treesitter::node::node_text};
+    use crate::{framework::golang::treesitter::build_tags, treesitter::node::node_text};
     use tree_sitter::{Language, Node, Query, QueryCursor};
 
     pub(crate) fn execute(root: Node, content: &str) -> Option<Vec<String>> {
@@ -117,7 +117,7 @@ pub(crate) mod op {
 #[cfg(test)]
 mod test {
     use super::op;
-    use crate::framework::golang::treesitter::operations::parse_tree;
+    use crate::framework::golang::operations::parse_tree;
     use googletest::prelude::*;
     use googletest::{
         assert_that,
