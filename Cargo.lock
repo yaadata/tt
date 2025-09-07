@@ -77,21 +77,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examen-tools"
-version = "0.0.1"
-dependencies = [
- "googletest",
- "mlua",
- "regex",
- "rstest",
- "serde",
- "serde_json",
- "thiserror",
- "tree-sitter",
- "tree-sitter-go",
-]
-
-[[package]]
 name = "futures-core"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -524,6 +509,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "testing-tools"
+version = "0.0.1"
+dependencies = [
+ "googletest",
+ "mlua",
+ "regex",
+ "rstest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-go",
 ]
 
 [[package]]
