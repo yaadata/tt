@@ -1,0 +1,30 @@
+dependency-management:
+  - changed-files:
+    - any-glob-to-any-file: ['Cargo.lock', 'Cargo.toml', 'mise.toml']
+
+library:
+  - changed-files:
+    - any-glob-to-any-file: ['lib/**']
+
+lib-framework:
+  - changed-files:
+    - any-glob-to-any-file: ['lib/framework/**']
+
+lib-core:
+  - changed-files:
+    - any-glob-to-any-file: ["lib/core/**"]
+
+treesitter:
+  - changed-files:
+    - any-glob-to-any-file: ['**/treesitter/**']
+
+golang:
+  - changed-files:
+    - any-glob-to-any-file: ['**/golang/**']
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ['**/**.md']
+
+workflow:
+  - changed-files: [".github/**"]
