@@ -1,6 +1,6 @@
 dependency-management:
-  - changed-files:
-    - any-glob-to-any-file: ['Cargo.lock', 'Cargo.toml', 'mise.toml']
+- changed-files:
+  - any-glob-to-any-file: ['Cargo.lock', 'Cargo.toml', 'mise.toml']
 
 library:
   - changed-files:
@@ -27,4 +27,5 @@ documentation:
     - any-glob-to-any-file: ['**/**.md']
 
 workflow:
-  - changed-files: [".github/**"]
+  - changed-files: 
+      - any-glob-to-any-file: [".github/**"]
