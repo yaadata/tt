@@ -1,4 +1,5 @@
 pub(crate) mod build_tags;
+pub(crate) mod constants;
 pub(crate) mod gotest_file_test_methods;
 pub(crate) mod gotest_subtest_in_loop_named_fields;
 pub(crate) mod gotest_subtest_in_loop_named_fields_struct_predfined;
@@ -8,3 +9,5 @@ pub(crate) mod gotest_subtest_out_of_loop_named_fields;
 pub(crate) mod gotest_subtest_out_of_loop_unnamed_fields;
 pub(crate) mod gotest_subtest_string_literal;
 pub(crate) mod gotest_test_function;
+pub(crate) mod package_in_import_list;
+pub(crate) mod package_in_single_import;
