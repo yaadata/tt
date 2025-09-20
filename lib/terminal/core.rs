@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     io::BufReader,
     process::{Command, ExitStatus, Stdio},
 };
@@ -57,5 +58,17 @@ impl TerminalExecution {
         let output = BufReader::new(stdout);
         let status = child.wait().expect("command execution failed");
         Ok(TerminalExecutionResult::ReadOutput { status, output })
+    }
+}
+
+impl fmt::Display for TerminalExecution {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = self.command.clone();
+        let args = self.args.clone().join(" ");
+        if args.len().ge(&0) && !args.is_empty() {
+            res.push(' ');
+            res.push_str(&args);
+        }
+        write!(f, "{}", res)
     }
 }
