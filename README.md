@@ -5,6 +5,6 @@ Edit-Build-Test Cycle
 
 ## Setup
 
-Requires a minimum of Rust 1.89.
+Requires a minimum of Rust 1.96.
 
 This project recommends using [mise](https://mise.jdx.dev/lang/rust.html).
