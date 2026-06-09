@@ -20,7 +20,7 @@ env:
 jobs:
   libs-test:
     name: Run lib tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: ./
@@ -45,7 +45,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.89
+          toolchain: 1.96
 
       - name: Install cargo tools
         uses: taiki-e/install-action@v2
