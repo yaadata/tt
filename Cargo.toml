@@ -26,4 +26,4 @@ tree-sitter-go = "0.23"
 [dev-dependencies]
 googletest = "0.14.2"
 rstest = "0.24.0"
-mockall = "0.13.1"
+mockall = "0.14.0"
