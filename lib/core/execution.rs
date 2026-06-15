@@ -1,5 +1,4 @@
 use crate::core::errors::CommandExecutionError;
-use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
 pub struct CommandSpec {
