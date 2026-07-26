@@ -14,10 +14,6 @@ pub struct Runnable {
     pub meta: RunnableMeta,
 }
 
-pub struct Command {
-    pub command: String,
-    pub args: Vec<String>,
-}
 pub struct Buffer<'a> {
     pub content: &'a str,
     pub filepath: String,

@@ -1,8 +1,9 @@
+use std::collections::BTreeMap;
 use std::collections::HashSet;
 
 use crate::core::enums::Language as crate_language;
 use crate::core::errors::FrameworkError;
-use crate::core::types::Command;
+use crate::core::execution::CommandSpec;
 use crate::core::types::Runnable;
 use crate::core::types::Target;
 use crate::core::{
@@ -81,18 +82,20 @@ impl Framework for GotestProvider {
         target.buffer.filepath.to_string().ends_with(FILE_SUFFIX)
     }
 
-    fn generate_command(&self, runnable: Runnable) -> Command {
-        let mut cmd = Command {
-            command: "go".to_string(),
+    fn generate_command(&self, runnable: Runnable) -> CommandSpec {
+        let mut cmd = CommandSpec {
+            cwd: None,
+            env: BTreeMap::new(),
+            program: "go".to_string(),
             args: vec!["test".to_string(), "-v".to_string()],
         };
 
         cmd.args.push(runnable.filepath);
-        if let Some(meta) = runnable.meta.get_meta() {
-            if !meta.build_tags.is_empty() {
-                cmd.args
-                    .push(format!("-tags={}", meta.build_tags.join(",")));
-            }
+        if let Some(meta) = runnable.meta.get_meta()
+            && !meta.build_tags.is_empty()
+        {
+            cmd.args
+                .push(format!("-tags={}", meta.build_tags.join(",")));
         }
         cmd
     }
