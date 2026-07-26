@@ -1,7 +1,7 @@
 pub(crate) mod op {
     use std::ops::Range;
 
-    use tree_sitter::{Language, Node, Query, QueryCursor};
+    use tree_sitter::{Language, Node, Query, QueryCursor, StreamingIterator};
 
     use crate::{
         core::{
@@ -19,10 +19,10 @@ pub(crate) mod op {
         let test_name_index = query.capture_index_for_name("test_name")?;
         let test_function_index = query.capture_index_for_name("testfunc")?;
         let mut cursor = QueryCursor::new();
-        let query_matches = cursor.matches(&query, node, content.as_bytes());
+        let mut query_matches = cursor.matches(&query, node, content.as_bytes());
 
         let mut parent_runnables: Vec<Runnable> = vec![];
-        for node_matched in query_matches {
+        while let Some(node_matched) = query_matches.next() {
             let function_node = node_matched
                 .captures
                 .iter()

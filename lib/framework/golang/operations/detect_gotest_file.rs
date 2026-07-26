@@ -1,5 +1,5 @@
 pub(crate) mod op {
-    use tree_sitter::{Language, Node, Query, QueryCursor};
+    use tree_sitter::{Language, Node, Query, QueryCursor, StreamingIterator};
 
     use crate::framework::golang::treesitter::{
         constants, package_in_import_list, package_in_single_import,
