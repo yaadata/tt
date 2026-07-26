@@ -1,0 +1,20 @@
+default_install_hook_types = ["commit-msg", "pre-push"]
+
+[[repos]]
+repo = "https://github.com/compilerla/conventional-pre-commit"
+rev = "v4.4.0"
+hooks = [
+  { id = "conventional-pre-commit", stages = ["commit-msg"] },
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "cargo-test"
+name = "cargo test"
+entry = "mise exec -- cargo test"
+language = "system"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
