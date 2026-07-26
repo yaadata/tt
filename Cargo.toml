@@ -20,10 +20,10 @@ thiserror = { version = "2.0.10" }
 regex = { version = "1.0.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tree-sitter = "0.23"
-tree-sitter-go = "0.23"
+tree-sitter = "0.26"
+tree-sitter-go = "0.25"
 
 [dev-dependencies]
-googletest = "0.14.2"
-rstest = "0.24.0"
-mockall = "0.13.1"
+googletest = "0.14.3"
+rstest = "0.26.1"
+mockall = "0.14.0"
