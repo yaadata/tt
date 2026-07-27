@@ -73,17 +73,19 @@ pub(crate) fn query() -> String {
               )
             )
             body: (block
-              (expression_statement
-                (call_expression
-                  function: (selector_expression
-                    operand: (identifier) @test.loop.test
-                    field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                  )
-                  arguments: (argument_list
-                    (selector_expression
-                      operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
-                      field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
-                    ) 
+              (statement_list
+                (expression_statement
+                  (call_expression
+                    function: (selector_expression
+                      operand: (identifier) @test.loop.test
+                      field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
+                    )
+                    arguments: (argument_list
+                      (selector_expression
+                        operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
+                        field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
+                      )
+                    )
                   )
                 )
               )

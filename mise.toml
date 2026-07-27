@@ -1,2 +1,7 @@
 [tools]
+"prek" = "0.4.11"
 "rust" = { version = "1.96.0", profile = "default", components = "rust-analyzer" }
+
+[tasks."hooks:install"]
+description = "Install the repository's commit-msg and pre-push hooks"
+run = "prek install --install-hooks"
