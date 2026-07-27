@@ -1,9 +1,10 @@
 pub(crate) fn query() -> String {
     let res = r#"
         [[
-          ((block (
-            short_var_declaration (
-              (expression_list
+          ((block
+            (statement_list
+              (short_var_declaration
+                (expression_list
                   (identifier) @test.cases.variable.name
                 )
                 right: (expression_list
@@ -34,32 +35,35 @@ pub(crate) fn query() -> String {
                       )
                     ) 	
                 )
-            ))
-            (for_statement
-              (range_clause
+              )
+              (for_statement
+                (range_clause
                   left: (expression_list
-                      (identifier)
-                        (identifier) @test.loop.case.variable
-                    )
-                    right: (identifier) @test.loop.cases.variable.name (#eq? @test.loop.cases.variable.name @test.cases.variable.name)
+                    (identifier)
+                    (identifier) @test.loop.case.variable
+                  )
+                  right: (identifier) @test.loop.cases.variable.name (#eq? @test.loop.cases.variable.name @test.cases.variable.name)
                 )
                 body: (block
-                  (expression_statement
+                  (statement_list
+                    (expression_statement
                       (call_expression
-                          function: (selector_expression
-                              operand: (identifier) @test.loop.test
-                                field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                            )
-                            arguments: (argument_list
-                              (selector_expression
-                                  operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
-                                    field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
-                                )
-                            )
+                        function: (selector_expression
+                          operand: (identifier) @test.loop.test
+                          field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
                         )
+                        arguments: (argument_list
+                          (selector_expression
+                            operand: (identifier) @test.loop.test.variable (#eq? @test.loop.test.variable @test.loop.case.variable)
+                            field: (field_identifier) @test.loop.test.variable.field (#eq? @test.loop.test.variable.field @test.case.definition.field)
+                          )
+                        )
+                      )
                     )
+                  )
                 )
-          	)
+              )
+            )
           ))
         ]]"#;
 
