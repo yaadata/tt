@@ -1,7 +1,7 @@
 pub(crate) mod op {
     use crate::core::types::{CursorPosition, Runnable, Target};
     use crate::treesitter::node::node_text;
-    use tree_sitter::{Language, Node, Query, QueryCursor};
+    use tree_sitter::{Language, Node, Query, QueryCursor, StreamingIterator};
 
     use std::ops;
 
@@ -61,10 +61,10 @@ pub(crate) mod op {
         let subcase_name_index = query.capture_index_for_name("test.case.field.value")?;
         let subcase_index = query.capture_index_for_name("test.case")?;
         let mut cursor = QueryCursor::new();
-        let query_matches = cursor.matches(&query, node, content.as_bytes());
+        let mut query_matches = cursor.matches(&query, node, content.as_bytes());
         let mut runnables = vec![];
 
-        for node_matched in query_matches {
+        while let Some(node_matched) = query_matches.next() {
             let subtest_capture = node_matched
                 .captures
                 .iter()
@@ -149,10 +149,10 @@ pub(crate) mod op {
             start: parent.range.start.to_point(),
             end: parent.range.end.to_point(),
         });
-        let query_matches = cursor.matches(&query, node, content.as_bytes());
+        let mut query_matches = cursor.matches(&query, node, content.as_bytes());
         let mut runnables = vec![];
 
-        for node_matched in query_matches {
+        while let Some(node_matched) = query_matches.next() {
             let subtest_capture = node_matched
                 .captures
                 .iter()

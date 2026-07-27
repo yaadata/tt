@@ -39,60 +39,68 @@
 // - "case 1"
 pub(crate) fn query() -> String {
     let res = r#"
-            [[
-              (((type_declaration
-                  (type_spec
-                      name: (type_identifier) @test.case.variable.name
-                        type: (struct_type 
-                          (field_declaration_list
-                              (field_declaration
-                                name: (field_identifier) @test.case.definition.field
-                                type: (type_identifier) @test.case.definition.field.type (#eq? @test.case.definition.field.type "string")
-                          )
-                        )
-                    ) @test.case.type
+        [[
+          ((statement_list
+            (type_declaration
+              (type_spec
+                name: (type_identifier) @test.case.variable.name
+                type: (struct_type
+                  (field_declaration_list
+                    (field_declaration
+                      name: (field_identifier) @test.case.definition.field
+                      type: (type_identifier) @test.case.definition.field.type
+                      (#eq? @test.case.definition.field.type "string")
+                    )
                   )
-                ) 
-                (for_statement
-                    (range_clause
-                      left: (expression_list
-                        (identifier)
-                        (identifier) @test.loop.case.variable
-                      )
-                      right: (composite_literal
-                          type: (slice_type
-                          element: (type_identifier) @test.loop.case.variable.type (#eq? @test.loop.case.variable.type @test.case.variable.name)
+                ) @test.case.type
+              )
+            )
+            (for_statement
+              (range_clause
+                left: (expression_list
+                  (identifier)
+                  (identifier) @test.loop.case.variable
+                )
+                right: (composite_literal
+                  type: (slice_type
+                    element: (type_identifier) @test.loop.case.variable.type
+                    (#eq? @test.loop.case.variable.type @test.case.variable.name)
+                  )
+                  body: (literal_value
+                    (literal_element
+                      (literal_value
+                        (literal_element
+                          (interpreted_string_literal) @test.case.field.value
                         )
-                        body: (literal_value
-                          (literal_element
-                            (literal_value
-                              (literal_element
-                                (interpreted_string_literal) @test.case.field.value
-                              )
-                            )
-                          ) @test.case
+                      )
+                    ) @test.case
+                  )
+                )
+              )
+              body: (block
+                (statement_list
+                  (expression_statement
+                    (call_expression
+                      function: (selector_expression
+                        operand: (identifier) @test.loop.test
+                        field: (field_identifier) @test.loop.test.method
+                        (#eq? @test.loop.test.method "Run")
+                      )
+                      arguments: (argument_list
+                        (selector_expression
+                          operand: (identifier) @test.loop.test.variable
+                          (#eq? @test.loop.case.variable @test.loop.test.variable)
+                          field: (field_identifier) @test.loop.test.variable.field
+                          (#eq? @test.case.definition.field @test.loop.test.variable.field)
                         )
                       )
                     )
-                    body: (block
-                      (expression_statement
-                        (call_expression
-                          function: (selector_expression
-                            operand: (identifier) @test.loop.test
-                            field: (field_identifier) @test.loop.test.method (#eq? @test.loop.test.method "Run")
-                          )
-                          arguments: (argument_list
-                            (selector_expression
-                                operand: (identifier) @test.loop.test.variable (#eq? @test.loop.case.variable @test.loop.test.variable)
-                                field: (field_identifier) @test.loop.test.variable.field (#eq? @test.case.definition.field @test.loop.test.variable.field)
-                            )
-                          )
-                        )
-                      )
-                    )
                   )
-              ))
-            ]]"#;
+                )
+              )
+            )
+          ))
+        ]]"#;
 
     res.to_string()
 }

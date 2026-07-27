@@ -1,6 +1,6 @@
 pub(crate) mod op {
     use crate::{framework::golang::treesitter::build_tags, treesitter::node::node_text};
-    use tree_sitter::{Language, Node, Query, QueryCursor};
+    use tree_sitter::{Language, Node, Query, QueryCursor, StreamingIterator};
 
     pub(crate) fn execute(root: Node, content: &str) -> Option<Vec<String>> {
         let query_pattern = build_tags::query();
@@ -13,8 +13,8 @@ pub(crate) mod op {
                 .capture_index_for_name("build_tags")
                 .expect("could not find index position of `build_tags` capture");
             let mut cursor = QueryCursor::new();
-            let query_matches = cursor.matches(&q, root, content.as_bytes());
-            for node_matched in query_matches {
+            let mut query_matches = cursor.matches(&q, root, content.as_bytes());
+            while let Some(node_matched) = query_matches.next() {
                 for m in node_matched.captures.iter() {
                     if m.index != capture_index {
                         continue;
