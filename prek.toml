@@ -4,7 +4,19 @@ default_install_hook_types = ["commit-msg", "pre-push"]
 repo = "https://github.com/compilerla/conventional-pre-commit"
 rev = "v4.4.0"
 hooks = [
-  { id = "conventional-pre-commit", stages = ["commit-msg"] },
+  { id = "conventional-pre-commit", stages = ["commit-msg"], args = [
+    "--strict",
+    "--verbose",
+    "chore",
+    "docs",
+    "enhance",
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "release",
+    "test",
+  ] },
 ]
 
 [[repos]]
