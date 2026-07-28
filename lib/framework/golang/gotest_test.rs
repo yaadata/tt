@@ -2,6 +2,7 @@
 mod test {
     use crate::core::enums;
     use crate::core::errors::FrameworkError;
+    use crate::core::metadata::RunnableMeta;
     use crate::core::traits::Framework;
     use crate::{
         core::types::{self, Buffer, Target},
@@ -618,11 +619,14 @@ mod test {
         // act
         let actual = provider.search_for_capability(description);
         // assert
-        if expected.is_some() {
-            assert_that!(actual.is_some(), eq(true));
-            assert_that!(actual.unwrap().search, eq(&expected.unwrap()));
-        } else {
-            assert_that!(actual.is_none(), eq(true));
+        match expected {
+            Some(expectation) => {
+                assert_that!(actual.is_some(), eq(true));
+                assert_that!(actual.unwrap().search, eq(&expectation));
+            }
+            None => {
+                assert_that!(actual.is_none(), eq(true));
+            }
         }
     }
 
@@ -633,5 +637,30 @@ mod test {
         let actual = provider.capabilities();
         // assert
         assert_that!(actual.len(), eq(3))
+    }
+
+    #[gtest]
+    fn build_command_without_build_tags() {
+        let runnable = types::Runnable {
+            name: "TestSample".to_string(),
+            filepath: "sample_test.go".to_string(),
+            range: types::CursorPosition::new(0, 0)..types::CursorPosition::new(0, 0),
+            meta: RunnableMeta::default_golang(),
+        };
+        let provider = gotest::GotestProvider::new();
+
+        let command = provider.build_command(&runnable);
+
+        assert_that!(command.program, eq("go"));
+        assert_eq!(
+            command.args,
+            vec![
+                "test".to_string(),
+                "-v".to_string(),
+                "sample_test.go".to_string(),
+            ]
+        );
+        assert_that!(command.cwd, none());
+        assert_that!(command.env.is_empty(), eq(true));
     }
 }

@@ -11,3 +11,8 @@ pub enum FrameworkError {
     #[error("precondition error. details = `{0}`")]
     PreconditionError(String),
 }
+
+
+#[derive(PartialEq, Error, Debug)]
+pub enum CommandExecutionError {
+}
