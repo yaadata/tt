@@ -19,20 +19,43 @@ COMMIT_TYPES = (
 
 NON_SCOPE_DIRECTORIES = {"fixtures"}
 CONVENTIONAL_COMMIT_METADATA = "conventional-commit"
+LIBRARY_TARGET_KINDS = {
+    "lib",
+    "rlib",
+    "dylib",
+    "cdylib",
+    "staticlib",
+    "proc-macro",
+}
 
 
-def discover_component_scopes(project_root: Path) -> set[str]:
-    source_root = project_root / "lib"
-    if not source_root.is_dir():
-        return set()
+def discover_component_scopes(metadata: dict[str, Any]) -> set[str]:
+    workspace_root = Path(metadata["workspace_root"])
+    workspace_members = set(metadata.get("workspace_members", []))
+    scopes = set()
 
-    return {
-        path.relative_to(project_root).as_posix()
-        for path in source_root.iterdir()
-        if path.is_dir()
-        and not path.name.startswith((".", "_"))
-        and path.name not in NON_SCOPE_DIRECTORIES
-    }
+    for package in metadata.get("packages", []):
+        if package.get("id") not in workspace_members:
+            continue
+
+        package_root = Path(package["manifest_path"]).parent
+        if package_root != workspace_root:
+            continue
+
+        for target in package.get("targets", []):
+            if not set(target.get("kind", [])) & LIBRARY_TARGET_KINDS:
+                continue
+
+            source_root = Path(target["src_path"]).parent
+            scopes.update(
+                path.relative_to(workspace_root).as_posix()
+                for path in source_root.iterdir()
+                if path.is_dir()
+                and not path.name.startswith((".", "_"))
+                and path.name not in NON_SCOPE_DIRECTORIES
+            )
+
+    return scopes
 
 
 def cargo_metadata(project_root: Path) -> dict[str, Any]:
@@ -78,8 +101,9 @@ def discover_workspace_scopes(metadata: dict[str, Any]) -> set[str]:
 
 
 def discover_scopes(project_root: Path) -> list[str]:
-    scopes = discover_component_scopes(project_root)
-    scopes.update(discover_workspace_scopes(cargo_metadata(project_root)))
+    metadata = cargo_metadata(project_root)
+    scopes = discover_component_scopes(metadata)
+    scopes.update(discover_workspace_scopes(metadata))
     return sorted(scopes)
 
 
