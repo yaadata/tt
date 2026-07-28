@@ -11,7 +11,7 @@ use super::{
 pub trait Framework {
     fn detect(&self, target: &Target) -> bool;
     fn runnables(&self, target: &Target) -> Result<Vec<Runnable>, FrameworkError>;
-    fn generate_command(&self, runnable: Runnable) -> CommandSpec;
+    fn build_command(&self, runnable: &Runnable) -> CommandSpec;
     fn capabilities(&self) -> HashSet<CapabilityDetails>;
     fn search_for_capability(&self, description: &str) -> Option<CapabilityDetails>;
 }

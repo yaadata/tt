@@ -82,7 +82,7 @@ impl Framework for GotestProvider {
         target.buffer.filepath.to_string().ends_with(FILE_SUFFIX)
     }
 
-    fn generate_command(&self, runnable: Runnable) -> CommandSpec {
+    fn build_command(&self, runnable: &Runnable) -> CommandSpec {
         let mut cmd = CommandSpec {
             cwd: None,
             env: BTreeMap::new(),
@@ -90,7 +90,7 @@ impl Framework for GotestProvider {
             args: vec!["test".to_string(), "-v".to_string()],
         };
 
-        cmd.args.push(runnable.filepath);
+        cmd.args.push(runnable.filepath.clone());
         if let Some(meta) = runnable.meta.get_meta()
             && !meta.build_tags.is_empty()
         {
