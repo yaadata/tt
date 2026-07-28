@@ -27,7 +27,7 @@ def discover_component_scopes(project_root: Path) -> set[str]:
         return set()
 
     return {
-        path.name
+        path.relative_to(project_root).as_posix()
         for path in source_root.iterdir()
         if path.is_dir()
         and not path.name.startswith((".", "_"))
@@ -55,6 +55,7 @@ def configured_scopes(metadata: dict[str, Any]) -> set[str]:
 def discover_workspace_scopes(metadata: dict[str, Any]) -> set[str]:
     workspace_members = set(metadata.get("workspace_members", []))
     scopes = configured_scopes(metadata.get("metadata") or {})
+    workspace_root = Path(metadata["workspace_root"])
 
     for package in metadata.get("packages", []):
         if package.get("id") not in workspace_members:
@@ -62,7 +63,14 @@ def discover_workspace_scopes(metadata: dict[str, Any]) -> set[str]:
 
         package_metadata = package.get("metadata") or {}
         configuration = package_metadata.get(CONVENTIONAL_COMMIT_METADATA, {})
-        scope = configuration.get("scope", package.get("name"))
+        scope = configuration.get("scope")
+        if scope is None:
+            package_root = Path(package["manifest_path"]).parent
+            relative_package_root = package_root.relative_to(workspace_root)
+            if relative_package_root == Path("."):
+                continue
+            scope = relative_package_root.as_posix()
+
         if isinstance(scope, str) and scope:
             scopes.add(scope)
 
