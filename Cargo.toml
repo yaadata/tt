@@ -27,3 +27,6 @@ tree-sitter-go = "0.25"
 googletest = "0.14.3"
 rstest = "0.26.1"
 mockall = "0.14.0"
+
+[workspace]
+members = ["scripts/repo-tools"]
