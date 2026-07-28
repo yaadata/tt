@@ -5,7 +5,7 @@ use clap::Parser;
 use std::path::Path;
 use std::process::{self, Command};
 use task::Task;
-use test_target::TestTarget;
+use test_target::{TestSelection, TestTarget};
 
 #[derive(Parser)]
 #[command(about = "Repository automation for testing-tools")]
@@ -25,13 +25,13 @@ fn main() {
 }
 
 fn run(task: Task) -> Result<i32, String> {
-    let module = match task {
+    let selection = match task {
         Task::Test => None,
-        Task::TestDir { directory } => TestTarget::Directory(directory).module_filter()?,
-        Task::TestFile { file } => TestTarget::File(file).module_filter()?,
+        Task::TestDir { directory } => Some(TestTarget::Directory(directory).selection()?),
+        Task::TestFile { file } => Some(TestTarget::File(file).selection()?),
     };
 
-    run_nextest(module.as_deref())
+    run_nextest(selection.as_ref())
 }
 
 pub(crate) fn project_root() -> &'static Path {
@@ -41,7 +41,7 @@ pub(crate) fn project_root() -> &'static Path {
         .expect("repo-tools must be located at scripts/repo-tools")
 }
 
-fn run_nextest(module: Option<&str>) -> Result<i32, String> {
+fn run_nextest(selection: Option<&TestSelection>) -> Result<i32, String> {
     let mut command = Command::new("mise");
     command
         .args([
@@ -50,7 +50,6 @@ fn run_nextest(module: Option<&str>) -> Result<i32, String> {
             "cargo",
             "nextest",
             "run",
-            "--lib",
             "--cargo-quiet",
             "--failure-output=immediate",
             "--success-output=never",
@@ -61,8 +60,10 @@ fn run_nextest(module: Option<&str>) -> Result<i32, String> {
         .env("RUSTFLAGS", "-Awarnings")
         .env("RUST_BACKTRACE", "1");
 
-    if let Some(module) = module {
-        command.args(["-E", &format!("test(/^{module}::/)")]);
+    if let Some(selection) = selection {
+        selection.configure_command(&mut command);
+    } else {
+        command.arg("--lib");
     }
 
     let status = command
