@@ -3,10 +3,10 @@ setup:
     mise run hooks:install
 
 test:
-    python3 scripts/test_all.py
+    RUSTFLAGS=-Awarnings mise exec -- cargo run --quiet --package repo-tools -- test
 
 test-dir directory:
-    python3 scripts/test_dir.py {{quote(directory)}}
+    RUSTFLAGS=-Awarnings mise exec -- cargo run --quiet --package repo-tools -- test-dir {{quote(directory)}}
 
 test-file file:
-    python3 scripts/test_file.py {{quote(file)}}
+    RUSTFLAGS=-Awarnings mise exec -- cargo run --quiet --package repo-tools -- test-file {{quote(file)}}
